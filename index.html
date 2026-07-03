@@ -1155,6 +1155,11 @@ function dispatchAction(msg){
 
 /* ── Peer data handler ── */
 function handlePeerData(data){
+  if(data && data.type==='ROOM_FULL'){
+    lastPeerError='room-full';
+    ui.screen='connError'; render();
+    return;
+  }
   if(ui.role==='host'){
     if(data.type==='DECK_READY'){
       guestDeckIds=data.deck; guestPlayerName=data.name||'プレイヤー2';
@@ -1205,6 +1210,11 @@ function createRoom(){
   peer=new Peer('five-crest-'+roomCode.toLowerCase(), PEER_CONFIG);
   peer.on('open',()=>{ ui.screen='waitingForPeer'; render(); });
   peer.on('connection',c=>{
+    // Reject extra connections: this room already has an opponent
+    if(conn && conn.open){
+      c.on('open',()=>{ try{ c.send({type:'ROOM_FULL'}); }catch(e){} setTimeout(()=>{try{c.close();}catch(e){}},300); });
+      return;
+    }
     attachConn(c);
     c.on('open',()=>{
       hostDeckIds=null; guestDeckIds=null;
@@ -1212,28 +1222,51 @@ function createRoom(){
       ui.screen='deckBuilder'; render();
     });
   });
+  peer.on('disconnected',()=>{
+    // Broker connection lost (tab suspended etc.) — reclaim the same room ID
+    if(peer && !peer.destroyed){ try{ peer.reconnect(); }catch(e){} }
+  });
   peer.on('error',err=>{
     if(err.type==='unavailable-id'){ roomCode=genCode(); createRoom(); return; }
+    if(err.type==='network'){ return; } // transient broker drop; reconnect handler will recover
     lastPeerError=err.type||String(err);
     ui.screen='connError'; render();
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible' && peer && peer.disconnected && !peer.destroyed){
+      try{ peer.reconnect(); }catch(e){}
+    }
   });
 }
 function joinRoom(code){
   ui.role='guest'; ui.myIdx=1; playerName='プレイヤー2';
   ui.screen='connecting'; render();
   destroyPeer();
+  const targetId='five-crest-'+code.trim().toLowerCase();
+  let retries=0;
+  const MAX_RETRIES=5;
   peer=new Peer(PEER_CONFIG);
-  peer.on('open',()=>{
-    const c=peer.connect('five-crest-'+code.trim().toLowerCase(),{reliable:true,serialization:'json'});
+  function tryConnect(){
+    if(!peer||peer.destroyed||ui.screen!=='connecting')return;
+    const c=peer.connect(targetId,{reliable:true,serialization:'json'});
     attachConn(c);
     c.on('open',()=>{
       hostDeckIds=null; guestDeckIds=null;
       deckInProgress=[]; deckFilter='all'; deckSearch=''; ui.deckView='pool';
       ui.screen='deckBuilder'; render();
     });
+  }
+  peer.on('open',tryConnect);
+  peer.on('error',err=>{
+    if(err.type==='peer-unavailable' && retries<MAX_RETRIES && ui.screen==='connecting'){
+      retries++;
+      // Host tab may be waking up / re-registering — retry after a short wait
+      setTimeout(tryConnect, 3000);
+      return;
+    }
+    lastPeerError=err.type||String(err); ui.screen='connError'; render();
   });
-  peer.on('error',err=>{ lastPeerError=err.type||String(err); ui.screen='connError'; render(); });
-  setTimeout(()=>{ if(ui.screen==='connecting'){lastPeerError=lastPeerError||'timeout (接続タイムアウト)'; ui.screen='connError';render();} },25000);
+  setTimeout(()=>{ if(ui.screen==='connecting'){lastPeerError=lastPeerError||'timeout (接続タイムアウト)'; ui.screen='connError';render();} },30000);
 }
 
 /* =====================================================================
@@ -1516,6 +1549,7 @@ function waitingForPeerHTML(){
     <div style="font-size:12px;color:var(--text-muted);">P2に以下のコードを教えてください</div>
     <div class="room-code">${roomCode}</div>
     <div class="conn-pill"><div class="conn-dot wait"></div>P2の参加を待っています...</div>
+    <div style="font-size:11px;color:var(--civ-light);text-align:center;max-width:290px;line-height:1.7;">⚠ この画面を開いたまま待機してください。<br>他のアプリやタブに切り替えるとルームが一時的に見えなくなります。</div>
     <button class="btn btn-ghost btn-sm" data-action="go-start">← 戻る</button>
   </div>`;
 }
@@ -1529,15 +1563,16 @@ function enterCodeHTML(){
   </div>`;
 }
 function connectingHTML(){
-  return `<div class="screen-center"><div class="logo-sub">接続中...</div><div class="waiting-banner" style="padding:14px 24px;">P1のルームに接続しています <span class="blink">◌</span></div></div>`;
+  return `<div class="screen-center"><div class="logo-sub">接続中...</div><div class="waiting-banner" style="padding:14px 24px;">P1のルームに接続しています <span class="blink">◌</span></div><div style="font-size:11px;color:var(--text-faint);text-align:center;max-width:280px;line-height:1.7;">見つからない場合は自動で再試行します(最大30秒)。<br>P1の画面がスリープしていないか確認してください。</div></div>`;
 }
 function connErrorHTML(){
   const hints = {
-    'peer-unavailable': 'コードが間違っているか、P1のルームが閉じられています。コードを確認してください。',
+    'peer-unavailable': 'コードが間違っているか、P1の画面がスリープ/他アプリに切り替わっています。P1の画面をこのゲームに戻した状態で、もう一度お試しください。',
     'network': 'PeerJS仲介サーバーに接続できません。Wi-Fi/通信環境を確認するか、少し待って再試行してください。',
     'timeout (接続タイムアウト)': '相手との直接通信を確立できませんでした。両方の端末を同じWi-Fiに接続すると成功しやすくなります。',
     'server-error': 'PeerJSサーバー側のエラーです。しばらく待って再試行してください。',
     'browser-incompatible': 'このブラウザはWebRTC非対応です。Safari/Chrome/Edgeの最新版をお使いください。',
+    'room-full': 'このルームにはすでに対戦相手が接続しています。新しいルームを作成してもらってください。',
   };
   const hint = hints[lastPeerError] || '';
   return `<div class="screen-center" style="gap:14px;">
