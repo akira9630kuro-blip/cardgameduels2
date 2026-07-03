@@ -517,9 +517,10 @@ function removeFromZone(zone, uid) { const i = zone.findIndex(c => c.uid === uid
 function removeFromHand(p, uid) { return removeFromZone(p.hand, uid); }
 function effectivePower(c) { return getCardDef(c.defId).power + (c.buff || 0); }
 
-function createGame(name1, name2, deckIds1, deckIds2) {
+function createGame(name1, name2, deckIds1, deckIds2, firstIdx) {
+  const first = (firstIdx === 0 || firstIdx === 1) ? firstIdx : 0;
   const state = {
-    turnCount: 1, active: 0,
+    turnCount: 1, active: first,
     players: [createPlayer(name1 || 'プレイヤー1', deckIds1), createPlayer(name2 || 'プレイヤー2', deckIds2)],
     log: [], pending: null, winner: null, summonLock: null, effectQueue: [],
   };
@@ -527,7 +528,7 @@ function createGame(name1, name2, deckIds1, deckIds2) {
     for (let i = 0; i < 5; i++) p.shields.push(p.deck.shift());
     for (let i = 0; i < 5; i++) p.hand.push(p.deck.shift());
   });
-  log(state, `ゲーム開始!`);
+  log(state, `ゲーム開始! 先攻: ${state.players[state.active].name}`);
   startTurn(state);
   return state;
 }
@@ -1099,7 +1100,13 @@ const ui = {
 let deckInProgress=[], deckFilter='all', deckSearch='';
 let playerName='プレイヤー1';
 let hostDeckIds=null, guestDeckIds=null, guestPlayerName='プレイヤー2';
+let turnChoice='random'; // 'first' | 'second' | 'random' (HOST only)
 
+function decideFirstIdx(){
+  if(turnChoice==='first') return 0;
+  if(turnChoice==='second') return 1;
+  return Math.random()<0.5?0:1;
+}
 function getPlayer(idx) { return game.players[idx]; }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
@@ -1151,7 +1158,7 @@ function handlePeerData(data){
   if(ui.role==='host'){
     if(data.type==='DECK_READY'){
       guestDeckIds=data.deck; guestPlayerName=data.name||'プレイヤー2';
-      if(hostDeckIds){ game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds); ui.prevShields=null; ui.breakAnim=null; ui.screen='play'; broadcastState(); render(); }
+      if(hostDeckIds){ game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds,decideFirstIdx()); ui.prevShields=null; ui.breakAnim=null; ui.screen='play'; broadcastState(); render(); }
     } else if(data.type==='ACTION'){ applyAction(data); afterEngineAction(); }
   } else {
     if(data.type==='STATE'){
@@ -1168,6 +1175,18 @@ function handlePeerData(data){
 }
 
 /* ── PeerJS setup ── */
+const PEER_CONFIG = {
+  debug: 1,
+  config: { iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  ] }
+};
+let lastPeerError = '';
 function genCode(){
   const ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({length:6},()=>ch[Math.floor(Math.random()*ch.length)]).join('');
@@ -1183,7 +1202,7 @@ function createRoom(){
   ui.role='host'; ui.myIdx=0; playerName='プレイヤー1';
   roomCode=genCode(); ui.screen='creatingRoom'; render();
   destroyPeer();
-  peer=new Peer('five-crest-'+roomCode.toLowerCase());
+  peer=new Peer('five-crest-'+roomCode.toLowerCase(), PEER_CONFIG);
   peer.on('open',()=>{ ui.screen='waitingForPeer'; render(); });
   peer.on('connection',c=>{
     attachConn(c);
@@ -1195,6 +1214,7 @@ function createRoom(){
   });
   peer.on('error',err=>{
     if(err.type==='unavailable-id'){ roomCode=genCode(); createRoom(); return; }
+    lastPeerError=err.type||String(err);
     ui.screen='connError'; render();
   });
 }
@@ -1202,7 +1222,7 @@ function joinRoom(code){
   ui.role='guest'; ui.myIdx=1; playerName='プレイヤー2';
   ui.screen='connecting'; render();
   destroyPeer();
-  peer=new Peer();
+  peer=new Peer(PEER_CONFIG);
   peer.on('open',()=>{
     const c=peer.connect('five-crest-'+code.trim().toLowerCase(),{reliable:true,serialization:'json'});
     attachConn(c);
@@ -1212,8 +1232,8 @@ function joinRoom(code){
       ui.screen='deckBuilder'; render();
     });
   });
-  peer.on('error',()=>{ ui.screen='connError'; render(); });
-  setTimeout(()=>{ if(ui.screen==='connecting'){ui.screen='connError';render();} },14000);
+  peer.on('error',err=>{ lastPeerError=err.type||String(err); ui.screen='connError'; render(); });
+  setTimeout(()=>{ if(ui.screen==='connecting'){lastPeerError=lastPeerError||'timeout (接続タイムアウト)'; ui.screen='connError';render();} },25000);
 }
 
 /* =====================================================================
@@ -1304,6 +1324,12 @@ function deckBuilderScreenHTML(){
         </div>
       </div>
     </div>
+    ${ui.role==='host'?`<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg-panel-deep);border-top:1px solid rgba(255,255,255,.05);">
+      <span style="font-size:11px;color:var(--text-muted);">手番:</span>
+      <button class="flt-btn${turnChoice==='first'?' active':''}" data-action="turn-choice" data-tc="first" style="${turnChoice==='first'?'--fc:var(--civ-fire)':''}">先攻</button>
+      <button class="flt-btn${turnChoice==='second'?' active':''}" data-action="turn-choice" data-tc="second" style="${turnChoice==='second'?'--fc:var(--civ-water)':''}">後攻</button>
+      <button class="flt-btn${turnChoice==='random'?' active':''}" data-action="turn-choice" data-tc="random" style="${turnChoice==='random'?'--fc:#888':''}">ランダム</button>
+    </div>`:''}
     <div class="db-tabs">
       <button class="db-tab${ui.deckView==='pool'?' active':''}" data-action="db-view" data-view="pool">カードプール</button>
       <button class="db-tab${ui.deckView==='list'?' active':''}" data-action="db-view" data-view="list">デッキ内容 (${total})</button>
@@ -1506,9 +1532,19 @@ function connectingHTML(){
   return `<div class="screen-center"><div class="logo-sub">接続中...</div><div class="waiting-banner" style="padding:14px 24px;">P1のルームに接続しています <span class="blink">◌</span></div></div>`;
 }
 function connErrorHTML(){
-  return `<div class="screen-center" style="gap:16px;">
+  const hints = {
+    'peer-unavailable': 'コードが間違っているか、P1のルームが閉じられています。コードを確認してください。',
+    'network': 'PeerJS仲介サーバーに接続できません。Wi-Fi/通信環境を確認するか、少し待って再試行してください。',
+    'timeout (接続タイムアウト)': '相手との直接通信を確立できませんでした。両方の端末を同じWi-Fiに接続すると成功しやすくなります。',
+    'server-error': 'PeerJSサーバー側のエラーです。しばらく待って再試行してください。',
+    'browser-incompatible': 'このブラウザはWebRTC非対応です。Safari/Chrome/Edgeの最新版をお使いください。',
+  };
+  const hint = hints[lastPeerError] || '';
+  return `<div class="screen-center" style="gap:14px;">
     <div class="logo-sub" style="color:var(--civ-fire);">接続エラー</div>
-    <div style="font-size:13px;color:var(--text-muted);text-align:center;max-width:280px;">ルームが見つからないか、接続に失敗しました。<br>コードを確認してもう一度お試しください。</div>
+    <div style="font-size:13px;color:var(--text-muted);text-align:center;max-width:300px;">ルームが見つからないか、接続に失敗しました。</div>
+    ${lastPeerError?`<div style="font-size:11px;color:var(--text-faint);text-align:center;">エラー種別: ${esc(lastPeerError)}</div>`:''}
+    ${hint?`<div style="font-size:12px;color:var(--civ-light);text-align:center;max-width:300px;line-height:1.7;">💡 ${esc(hint)}</div>`:''}
     <button class="btn btn-primary" data-action="show-join">もう一度試す</button>
     <button class="btn btn-ghost btn-sm" data-action="go-start">← ホームへ</button>
   </div>`;
@@ -1603,6 +1639,7 @@ document.getElementById('app').addEventListener('click',e=>{
     case 'go-start': destroyPeer(); ui.screen='start'; render(); break;
 
     /* ── Deck Builder ── */
+    case 'turn-choice': turnChoice=el.dataset.tc; render(); break;
     case 'db-filter':  deckFilter=el.dataset.civ; render(); break;
     case 'db-view':    ui.deckView=el.dataset.view; render(); break;
     case 'pool-add':   deckAdd(el.dataset.id); render(); break;
@@ -1625,7 +1662,7 @@ document.getElementById('app').addEventListener('click',e=>{
       if(deckInProgress.length<40)break;
       if(ui.role==='host'){
         hostDeckIds=[...deckInProgress];
-        if(guestDeckIds){game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds);ui.prevShields=null;ui.breakAnim=null;ui.screen='play';broadcastState();render();}
+        if(guestDeckIds){game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds,decideFirstIdx());ui.prevShields=null;ui.breakAnim=null;ui.screen='play';broadcastState();render();}
         else{ui.screen='waitingForReady';render();}
       } else {
         sendToPeer({type:'DECK_READY',deck:[...deckInProgress],name:playerName});
