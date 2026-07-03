@@ -399,6 +399,7 @@ function effectText(effect, isEtb) {
     case 'miradante':     return `${p}コスト5以下の光の呪文を手札から無料で使用してよい。次の自分のターンの始めまで、相手はコスト5以下のクリーチャーを召喚できない。`;
     case 'freeSummon':    return `手札から合計コスト${effect.budget}以下になるようにクリーチャーを出してよい。`;
     case 'sequence':      return `${p}` + effect.steps.map(s => effectText(s, false)).join('');
+    case 'graveShuffle':  return `${p}自分の墓地のカードをすべて山札に加えてシャッフルし、その後1枚引く。`;
     default: return '';
   }
 }
@@ -791,10 +792,10 @@ function triggerEffect(state, controllerIdx, effect) {
       if (done === 0) log(state, `(相手の手札がなく何も起きなかった)`);
       return;
     }
-    case 'graveShuffle': return `${p}自分の墓地のカードをすべて山札に加えてシャッフルし、その後1枚引く。`;
+   
     case 'graveShuffle': {
       if (controller.graveyard.length === 0) {
-        log(state, \(墓地にカードがなかった)`);
+        log(state, '(墓地にカードがなかった)`);
         return;
       }
       const n = controller.graveyard.length;
