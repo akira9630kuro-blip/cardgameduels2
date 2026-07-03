@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>クソカードゲーム作ったよ</title>
+<title>ファイブクレスト — 五紋の決闘</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
@@ -317,6 +317,31 @@ img, svg { display:block; }
 .mp-name { flex:1; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mp-tap { font-size:10px; color:var(--text-faint); }
 .lock-note { font-size:11px; color:var(--civ-fire); text-align:center; padding:4px 8px; }
+/* Shield zone ─────────────────────────── */
+.shield-zone { display:flex; align-items:center; justify-content:center; gap:8px; padding:7px 10px; min-height:56px; }
+.shield-tile { position:relative; width:38px; height:48px; flex-shrink:0; filter:drop-shadow(0 2px 6px rgba(0,0,0,.55)); }
+.shield-tile .sh { width:100%; height:100%; display:block; }
+.shield-tile .sh .body { fill:#2b3752; stroke:var(--civ-light); stroke-width:1.1; }
+.shield-tile .sh .shine { fill:rgba(255,255,255,.14); }
+.shield-zone-label { font-family:var(--font-display); font-size:13px; font-weight:700; color:var(--text-muted); margin-left:4px; }
+.shield-zone.empty-warn .shield-zone-label { color:var(--civ-fire); }
+.shield-tile.breaking { animation:shieldShatter .95s ease-in forwards; }
+.shield-tile.breaking .crack { position:absolute; inset:0; width:100%; height:100%; opacity:0; animation:crackIn .28s steps(3) forwards; }
+@keyframes crackIn { 0%{opacity:0;} 100%{opacity:.95;} }
+@keyframes shieldShatter {
+  0%   { transform:none; opacity:1; }
+  28%  { transform:translateX(-2px) rotate(-2deg); }
+  34%  { transform:translateX(2px)  rotate(2deg); }
+  40%  { transform:translateX(-2px) rotate(-1deg); }
+  46%  { transform:translateX(1px); }
+  58%  { transform:scale(1.1); opacity:1; }
+  100% { transform:scale(1.75) rotate(14deg); opacity:0; filter:brightness(3); }
+}
+/* fire-nature multicolor */
+.card[data-multi="fire-nature"] .card-head { background: linear-gradient(120deg, var(--civ-fire) 0%, var(--civ-fire-dark) 40%, var(--civ-nature-dark) 60%, var(--civ-nature) 100%) !important; }
+.card[data-multi="fire-nature"] .card-art  { background: linear-gradient(160deg, var(--civ-fire-dark), var(--civ-nature-dark)) !important; }
+.card[data-multi="water-light"] .card-head { background: linear-gradient(120deg, var(--civ-water) 0%, var(--civ-water-dark) 40%, var(--civ-light-dark) 60%, var(--civ-light) 100%) !important; }
+.card[data-multi="water-light"] .card-art  { background: linear-gradient(160deg, var(--civ-water-dark), var(--civ-light-dark)) !important; }
 </style>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
@@ -372,6 +397,8 @@ function effectText(effect, isEtb) {
     case 'multiRegrow':   return `${p}自分の墓地のクリーチャーを${effect.count}体まで手札に戻す。`;
     case 'multiDiscard':  return `${p}相手は手札を${effect.count}枚ランダムで捨てる。`;
     case 'miradante':     return `${p}コスト5以下の光の呪文を手札から無料で使用してよい。次の自分のターンの始めまで、相手はコスト5以下のクリーチャーを召喚できない。`;
+    case 'freeSummon':    return `手札から合計コスト${effect.budget}以下になるようにクリーチャーを出してよい。`;
+    case 'sequence':      return `${p}` + effect.steps.map(s => effectText(s, false)).join('');
     default: return '';
   }
 }
@@ -452,7 +479,9 @@ const RAW_CARDS = [
   {id:'d13', civ:'dark', type:'creature', name:'屍鬼将ゾンバイン', cost:7, power:8000, abilities:[], etb:{"type": "multiDiscard", "count": 2}},
   {id:'d14', civ:'dark', type:'spell', name:'闇の処刑', cost:3, effect:{"type": "destroyAny"}},
   {id:'d15', civ:'dark', type:'spell', name:'手札破壊', cost:3, effect:{"type": "discardCard"}},
-  {id:'m1', civ:'multi', civs:['water','light'], type:'creature', name:'時の法皇 ミラダンテXII', cost:8, power:12000, abilities:["speed","multiBreak"], etb:{"type": "miradante"}, p1Only:true}
+  {id:'l16', civ:'light', type:'spell', name:'聖裁の光', cost:5, abilities:["shieldTrigger"], effect:{"type": "sequence", "steps": [{"type":"draw","value":2},{"type":"destroyPowerLE","value":4000},{"type":"tapCreature"}]}},
+  {id:'m1', civ:'multi', civs:['water','light'], type:'creature', name:'時の法皇 ミラダンテXII', cost:6, power:12000, abilities:["speed","multiBreak","guard"], etb:{"type": "miradante"}, p1Only:true},
+  {id:'m2', civ:'multi', civs:['fire','nature'], type:'creature', name:'ドキラゴン剣', cost:6, power:12000, abilities:["speed","multiBreak"], etb:{"type": "sequence", "steps": [{"type":"draw","value":2},{"type":"freeSummon","budget":4}]}}
 ];
 
 RAW_CARDS.forEach(c => {
@@ -490,7 +519,7 @@ function createGame(name1, name2, deckIds1, deckIds2) {
   const state = {
     turnCount: 1, active: 0,
     players: [createPlayer(name1 || 'プレイヤー1', deckIds1), createPlayer(name2 || 'プレイヤー2', deckIds2)],
-    log: [], pending: null, winner: null, summonLock: null,
+    log: [], pending: null, winner: null, summonLock: null, effectQueue: [],
   };
   state.players.forEach(p => {
     for (let i = 0; i < 5; i++) p.shields.push(p.deck.shift());
@@ -759,6 +788,33 @@ function triggerEffect(state, controllerIdx, effect) {
       if (done === 0) log(state, `(相手の手札がなく何も起きなかった)`);
       return;
     }
+    case 'sequence': {
+      const steps = effect.steps.slice();
+      while (steps.length) {
+        const st = steps.shift();
+        triggerEffect(state, controllerIdx, st);
+        if (state.winner !== null) return;
+        if (state.pending) {
+          state.effectQueue = state.effectQueue || [];
+          state.effectQueue.unshift(...steps.map(s => ({ controllerIdx, effect: s })));
+          return;
+        }
+      }
+      return;
+    }
+    case 'freeSummon': {
+      const budget = effect.budget || 4;
+      const locked = state.summonLock && state.summonLock.lockedIdx === controllerIdx;
+      const options = controller.hand.filter(c => {
+        const d = getCardDef(c.defId);
+        if (d.type !== 'creature' || d.cost > budget) return false;
+        if (locked && d.cost <= 5) return false;
+        return true;
+      });
+      if (options.length === 0) { if (!effect.silent) log(state, `(出せるクリーチャーがなかった)`); return; }
+      state.pending = { type: 'chooseTarget', kind: 'freeSummon', controllerIdx, budget, skippable: true, options: options.map(c => c.uid) };
+      return;
+    }
     case 'miradante': {
       state.summonLock = { lockedIdx: other(controllerIdx), expiresAtTurnStartOf: controllerIdx };
       log(state, `時の封印! ${opp.name} は次の${controller.name}のターン開始まで、コスト5以下のクリーチャーを召喚できない！`);
@@ -801,13 +857,20 @@ function resolveBuff(state, controllerIdx, uid, value) {
   const c = findInZone(controller.battle, uid);
   if (c) { c.buff = (c.buff || 0) + value; log(state, `「${getCardDef(c.defId).name}」のパワーが+${value}された。`); }
 }
+function drainEffectQueue(state) {
+  while (state.effectQueue && state.effectQueue.length && !state.pending && state.winner === null) {
+    const item = state.effectQueue.shift();
+    triggerEffect(state, item.controllerIdx, item.effect);
+  }
+}
 function resolvePendingTarget(state, chosenUid) {
   if (state.winner !== null || !state.pending || state.pending.type !== 'chooseTarget') return { ok: false };
-  const { kind, controllerIdx, value, multi, skippable } = state.pending;
+  const { kind, controllerIdx, value, multi, skippable, budget } = state.pending;
   if (chosenUid === null) {
     if (!skippable) return { ok: false };
     state.pending = null;
     log(state, `(使用しなかった)`);
+    drainEffectQueue(state);
     return { ok: true };
   }
   state.pending = null;
@@ -827,6 +890,27 @@ function resolvePendingTarget(state, chosenUid) {
       triggerEffect(state, controllerIdx, d.effect);
     }
   }
+  else if (kind === 'freeSummon') {
+    const p = state.players[controllerIdx];
+    const card = removeFromHand(p, chosenUid);
+    if (card) {
+      const d = getCardDef(card.defId);
+      const inst = { uid: card.uid, defId: card.defId, tapped: false, sick: !d.abilities.includes('speed'), buff: 0 };
+      p.battle.push(inst);
+      log(state, `${p.name} が「${d.name}」(コスト${d.cost}) を無料で召喚した!`);
+      const rem = (budget || 0) - d.cost;
+      if (d.etb) triggerEffect(state, controllerIdx, d.etb);
+      if (rem > 0) {
+        const cont = { type: 'freeSummon', budget: rem, silent: true };
+        if (state.pending) {
+          state.effectQueue = state.effectQueue || [];
+          state.effectQueue.unshift({ controllerIdx, effect: cont });
+        } else {
+          triggerEffect(state, controllerIdx, cont);
+        }
+      }
+    }
+  }
   /* Multi-target effects: re-open selection for remaining picks */
   if (multi && multi > 1 && !state.pending && state.winner === null) {
     let opts = [];
@@ -834,6 +918,7 @@ function resolvePendingTarget(state, chosenUid) {
     else if (kind === 'regrow') opts = state.players[controllerIdx].graveyard.filter(c => getCardDef(c.defId).type === 'creature').map(c => c.uid);
     if (opts.length > 0) state.pending = { type: 'chooseTarget', kind, controllerIdx, multi: multi - 1, options: opts };
   }
+  if (!state.pending) drainEffectQueue(state);
   return { ok: true };
 }
 
@@ -991,6 +1076,7 @@ const ui = {
   selectedAttackerUid: null, modal: null, graveyardView: null,
   deckView: 'pool',
   manaPay: null, manaSelected: [],
+  breakAnim: null, prevShields: null,
 };
 let deckInProgress=[], deckFilter='all', deckSearch='';
 let playerName='プレイヤー1';
@@ -1035,7 +1121,7 @@ function applyAction(msg){
 }
 function sendToPeer(data){ if(conn&&conn.open) conn.send(data); }
 function broadcastState(){ if(ui.role==='host'&&game) sendToPeer({type:'STATE',game:JSON.stringify(game)}); }
-function afterEngineAction(){ broadcastState(); if(game.winner!==null) ui.screen='gameover'; render(); }
+function afterEngineAction(){ broadcastState(); detectShieldBreak(); if(game.winner!==null) ui.screen='gameover'; render(); }
 function dispatchAction(msg){
   ui.modal=null; ui.graveyardView=null; ui.selectedAttackerUid=null; ui.manaPay=null; ui.manaSelected=[];
   if(ui.role==='host'){ applyAction(msg); afterEngineAction(); }
@@ -1047,11 +1133,12 @@ function handlePeerData(data){
   if(ui.role==='host'){
     if(data.type==='DECK_READY'){
       guestDeckIds=data.deck; guestPlayerName=data.name||'プレイヤー2';
-      if(hostDeckIds){ game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds); ui.screen='play'; broadcastState(); render(); }
+      if(hostDeckIds){ game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds); ui.prevShields=null; ui.breakAnim=null; ui.screen='play'; broadcastState(); render(); }
     } else if(data.type==='ACTION'){ applyAction(data); afterEngineAction(); }
   } else {
     if(data.type==='STATE'){
       game=JSON.parse(data.game);
+      detectShieldBreak();
       ui.screen=game.winner!==null?'gameover':'play';
       ui.selectedAttackerUid=null; ui.modal=null; ui.graveyardView=null; ui.manaPay=null; ui.manaSelected=[]; render();
     } else if(data.type==='RESTART'){
@@ -1140,7 +1227,7 @@ function cardHTML(defId,opts){
   if(opts.inert)cls.push('inert');
   if(opts.selectable&&!opts.inert)cls.push('selectable');else cls.push('not-selectable');
   if(opts.selected)cls.push('selected-attacker');if(opts.validTarget)cls.push('valid-target');
-  const da=[];if(opts.action&&!opts.inert)da.push(`data-action="${opts.action}"`);if(opts.uid)da.push(`data-uid="${esc(opts.uid)}"`);
+  const da=[];if(opts.action&&!opts.inert)da.push(`data-action="${opts.action}"`);if(opts.uid)da.push(`data-uid="${esc(opts.uid)}"`);if(def.civs)da.push(`data-multi="${def.civs.join('-')}"`);
   return `<div class="${cls.join(' ')}" data-civ="${def.civ}" ${da.join(' ')}>
     <div class="card-head"><div class="card-cost">${def.cost}</div><div class="card-name">${esc(def.name)}</div></div>
     <div class="card-art">${CIV_ICON[def.civ]}</div>
@@ -1218,7 +1305,7 @@ function manaRowHTML(p){
   return `<div class="mana-row">${p.mana.map(m=>{const def=getCardDef(m.defId),civ=CIVS[def.civ];return `<div class="mana-chip ${m.tapped?'tapped':''}" style="--mc:${civ.color}" data-action="view-card" data-uid="${esc(m.uid)}" title="${esc(def.name)}">${civ.enName[0]}</div>`;}).join('')}</div>`;
 }
 function shieldPipsHTML(p){let s='';for(let i=0;i<5;i++)s+=`<span class="shield-pip ${i<p.shields.length?'':'empty'}"></span>`;const e=p.shields.length>5?`<span style="font-size:10px;margin-left:2px;">+${p.shields.length-5}</span>`:'';return `<span class="shield-pips">${s}</span>${e}`;}
-function playerHeaderHTML(idx,showDot){const p=getPlayer(idx);return `<div class="player-header"><div class="player-name-block"><span class="player-name">${showDot?'<span class="turn-dot"></span>':''}${esc(p.name)}</span></div><div class="meta-pips">${shieldPipsHTML(p)}<span class="deck-count" title="山札 残り${p.deck.length}枚">${ICON_DECK}${p.deck.length}</span><span class="gy-count" data-action="view-graveyard" data-owner="${idx}" title="墓地">${ICON_GY}${p.graveyard.length}</span></div></div>`;}
+function playerHeaderHTML(idx,showDot){const p=getPlayer(idx);return `<div class="player-header"><div class="player-name-block"><span class="player-name">${showDot?'<span class="turn-dot"></span>':''}${esc(p.name)}</span></div><div class="meta-pips"><span class="deck-count" title="山札 残り${p.deck.length}枚">${ICON_DECK}${p.deck.length}</span><span class="gy-count" data-action="view-graveyard" data-owner="${idx}" title="墓地">${ICON_GY}${p.graveyard.length}</span></div></div>`;}
 function battleZoneHTML(idx){
   const p=getPlayer(idx),isMyZone=idx===ui.myIdx,canAct=isMyDecision(),tgt=!!ui.selectedAttackerUid;
   if(!p.battle.length)return `<div class="battle-zone"><span class="empty-zone-hint">バトルゾーンは空です</span></div>`;
@@ -1240,6 +1327,32 @@ function handRowHTML(idx){
   if(!isMyHand)return `<div class="hand-row">${p.hand.map(()=>cardBackHTML(false)).join('')}</div>`;
   return `<div class="hand-row">${p.hand.map(c=>{const opts=(canAct&&!tgt)?{selectable:true,action:'open-hand-card',uid:c.uid}:{};return cardHTML(c.defId,opts);}).join('')}</div>`;
 }
+function shieldTileHTML(breaking){
+  const crack = breaking ? '<svg class="crack" viewBox="0 0 38 48"><path d="M19 3 L15 14 L21 21 L14 29 L20 37 L16 46" stroke="#fff" stroke-width="1.5" fill="none"/><path d="M15 14 L6 18 M21 21 L31 16 M14 29 L4 31 M20 37 L32 34" stroke="#fff" stroke-width="1" fill="none" opacity=".8"/></svg>' : '';
+  return `<div class="shield-tile${breaking?' breaking':''}"><svg class="sh" viewBox="0 0 24 24"><path class="body" d="M12 2l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V5z"/><ellipse class="shine" cx="9.5" cy="8" rx="3" ry="4" transform="rotate(-20 9.5 8)"/></svg>${crack}</div>`;
+}
+function shieldRowHTML(idx){
+  const p=getPlayer(idx);
+  let tiles=p.shields.map(()=>shieldTileHTML(false)).join('');
+  if(ui.breakAnim&&ui.breakAnim.playerIdx===idx){
+    for(let i=0;i<ui.breakAnim.count;i++)tiles+=shieldTileHTML(true);
+  }
+  const warn=p.shields.length===0?' empty-warn':'';
+  return `<div class="shield-zone${warn}">${tiles}<span class="shield-zone-label">${p.shields.length===0?'シールドなし!':p.shields.length}</span></div>`;
+}
+function detectShieldBreak(){
+  if(!game){ui.prevShields=null;return;}
+  const cur=[game.players[0].shields.length,game.players[1].shields.length];
+  if(ui.prevShields){
+    for(let i=0;i<2;i++){
+      if(cur[i]<ui.prevShields[i]){
+        ui.breakAnim={playerIdx:i,count:ui.prevShields[i]-cur[i],ts:Date.now()};
+        setTimeout(()=>{if(ui.breakAnim&&Date.now()-ui.breakAnim.ts>=900){ui.breakAnim=null;render();}},1000);
+      }
+    }
+  }
+  ui.prevShields=cur;
+}
 function opponentRowHTML(){const oi=other(ui.myIdx),p=getPlayer(oi),tgt=!!ui.selectedAttackerUid&&isMyDecision();return `<div class="player-row opponent">${playerHeaderHTML(oi,game.active===oi)}${tgt?`<div class="target-face valid-target" data-action="attack-player">${esc(p.name)} を直接攻撃 ⟶</div>`:''}${manaRowHTML(p)}${battleZoneHTML(oi)}${handRowHTML(oi)}</div>`;}
 function myRowHTML(){const p=getPlayer(ui.myIdx);return `<div class="player-row mine">${battleZoneHTML(ui.myIdx)}${manaRowHTML(p)}${handRowHTML(ui.myIdx)}${playerHeaderHTML(ui.myIdx,game.active===ui.myIdx)}</div>`;}
 function centerStripHTML(){
@@ -1247,7 +1360,7 @@ function centerStripHTML(){
   const log=game.log.slice(-6).map((l,i)=>`<div class="${i===game.log.slice(-6).length-1?'latest':''}">${esc(l)}</div>`).join('');
   return `<div class="center-strip"><div class="turn-indicator"><span class="turn-text"><span class="n">ターン${game.turnCount}</span>${esc(p.name)}の番</span><button class="btn btn-primary btn-sm" data-action="end-turn" ${canEnd?'':'disabled'}>ターン終了</button></div><div class="log-feed" id="logFeed">${log}</div>${!myTurn?`<div class="waiting-banner">${esc(p.name)} が行動中 — 待機中...</div>`:''}</div>`;
 }
-function renderBoard(){return `<div class="board">${opponentRowHTML()}<div class="spectrum-bar"></div>${centerStripHTML()}<div class="spectrum-bar"></div>${myRowHTML()}</div>`;}
+function renderBoard(){return `<div class="board">${opponentRowHTML()}${shieldRowHTML(other(ui.myIdx))}<div class="spectrum-bar"></div>${centerStripHTML()}<div class="spectrum-bar"></div>${shieldRowHTML(ui.myIdx)}${myRowHTML()}</div>`;}
 
 /* =====================================================================
    MODALS — identical to v3
@@ -1260,14 +1373,14 @@ function pendingModalHTML(){
   if(pend.type==='block'){const def=getPlayer(pend.defenderIdx),atk=getPlayer(pend.attackerIdx).battle.find(c=>c.uid===pend.attackerUid),aDef=atk?getCardDef(atk.defId):null;const opts=pend.options.map(uid=>{const c=def.battle.find(x=>x.uid===uid);return cardHTML(c.defId,{action:'block-choose',uid,selectable:true});}).join('');return `<div class="modal-overlay"><div class="modal-box"><div class="modal-title">${esc(def.name)}: ブロックしますか?</div><div style="text-align:center;font-size:12.5px;color:var(--text-muted);">「${esc(aDef?aDef.name:'')}」の攻撃</div><div class="target-grid">${opts}</div><div class="modal-actions"><button class="btn btn-ghost btn-block" data-action="block-decline">ブロックしない</button></div></div></div>`;}
   if(pend.type==='ambush'){const p=getPlayer(pend.controllerIdx),hc=p.hand.find(c=>c.uid===pend.cardUid);if(!hc)return '';const card=getCardDef(hc.defId);const stLabel=pend.isST?'S・トリガー発動!':'奇襲発動!';return `<div class="modal-overlay"><div class="modal-box"><div class="modal-title">${stLabel}</div><div class="modal-card-preview">${cardHTML(card.id,{large:true})}</div><div style="text-align:center;font-size:12.5px;color:var(--text-muted);">無料でプレイしますか?</div><div class="modal-actions row"><button class="btn btn-ghost" data-action="ambush-keep">手札に加える</button><button class="btn btn-primary" data-action="ambush-play">無料でプレイ</button></div></div></div>`;}
   if(pend.type==='chooseTarget'){
-    const labels={regrow:'墓地から戻すクリーチャーを選択',bounce:'手札に戻すクリーチャーを選択',destroy:'破壊するクリーチャーを選択',destroyAny:'破壊するクリーチャーを選択',tap:'タップするクリーチャーを選択',buff:'パワーを上げるクリーチャーを選択',freeSpell:'無料で使用する光の呪文を選択'};
+    const labels={regrow:'墓地から戻すクリーチャーを選択',bounce:'手札に戻すクリーチャーを選択',destroy:'破壊するクリーチャーを選択',destroyAny:'破壊するクリーチャーを選択',tap:'タップするクリーチャーを選択',buff:'パワーを上げるクリーチャーを選択',freeSpell:'無料で使用する光の呪文を選択',freeSummon:'無料で召喚するクリーチャーを選択'};
     let zone;
     if(pend.kind==='regrow')zone=getPlayer(pend.controllerIdx).graveyard;
     else if(pend.kind==='buff')zone=getPlayer(pend.controllerIdx).battle;
-    else if(pend.kind==='freeSpell')zone=getPlayer(pend.controllerIdx).hand;
+    else if(pend.kind==='freeSpell'||pend.kind==='freeSummon')zone=getPlayer(pend.controllerIdx).hand;
     else zone=getPlayer(other(pend.controllerIdx)).battle;
     const opts=pend.options.map(uid=>{const c=zone.find(x=>x.uid===uid);if(!c)return '';return cardHTML(c.defId,{action:'target-choose',uid,selectable:true});}).join('');
-    const multiNote=pend.multi&&pend.multi>1?`<div style="text-align:center;font-size:11px;color:var(--text-muted);">あと${pend.multi}体選べます</div>`:'';
+    const multiNote=pend.multi&&pend.multi>1?`<div style="text-align:center;font-size:11px;color:var(--text-muted);">あと${pend.multi}体選べます</div>`:pend.kind==='freeSummon'?`<div style="text-align:center;font-size:11px;color:var(--text-muted);">残りコスト: ${pend.budget}</div>`:'';
     const skipBtn=pend.skippable?'<div class="modal-actions"><button class="btn btn-ghost btn-block" data-action="target-skip">使用しない</button></div>':'';
     return `<div class="modal-overlay"><div class="modal-box"><div class="modal-title">${esc(labels[pend.kind]||'対象を選択')}</div>${multiNote}<div class="target-grid">${opts}</div>${skipBtn}</div></div>`;
   }
@@ -1494,7 +1607,7 @@ document.getElementById('app').addEventListener('click',e=>{
       if(deckInProgress.length<40)break;
       if(ui.role==='host'){
         hostDeckIds=[...deckInProgress];
-        if(guestDeckIds){game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds);ui.screen='play';broadcastState();render();}
+        if(guestDeckIds){game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds);ui.prevShields=null;ui.breakAnim=null;ui.screen='play';broadcastState();render();}
         else{ui.screen='waitingForReady';render();}
       } else {
         sendToPeer({type:'DECK_READY',deck:[...deckInProgress],name:playerName});
