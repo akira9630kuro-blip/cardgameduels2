@@ -201,6 +201,21 @@ img, svg { display:block; }
 .log-feed div.latest { opacity:1; }
 
 /* ============ Targeting banner ============ */
+.card.attacking { animation: atkPulse .55s ease-out 2; box-shadow:0 0 0 2px var(--civ-fire), 0 0 18px var(--civ-fire) !important; z-index:5; }
+.card.being-hit { animation: hitShake .5s ease-in-out 2; box-shadow:0 0 0 2px #ff5a5a, 0 0 18px #ff5a5a !important; z-index:5; }
+@keyframes atkPulse { 0%{transform:translateY(0);} 40%{transform:translateY(-8px) scale(1.06);} 100%{transform:translateY(0);} }
+@keyframes hitShake { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-5px);} 40%{transform:translateX(5px);} 60%{transform:translateX(-3px);} 80%{transform:translateX(3px);} }
+.attack-banner { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:200; pointer-events:none;
+  background:linear-gradient(120deg, rgba(20,10,10,.94), rgba(40,15,15,.94)); border:1.5px solid var(--civ-fire);
+  border-radius:var(--r-md); padding:14px 26px; box-shadow:0 8px 40px rgba(0,0,0,.6), 0 0 24px rgba(214,90,60,.4);
+  font-family:var(--font-display); text-align:center; animation:atkBannerIn .35s ease-out, atkBannerOut .35s ease-in 1.15s forwards; }
+.attack-banner .ab-main { font-size:15px; font-weight:700; color:#fff; white-space:nowrap; }
+.attack-banner .ab-sub { font-size:11px; color:var(--civ-fire); margin-top:3px; letter-spacing:.1em; }
+.attack-banner .ab-arrow { color:var(--civ-fire); margin:0 8px; }
+.attack-banner.direct { border-color:#ff5a5a; }
+.attack-banner.direct .ab-main { color:#ffdada; }
+@keyframes atkBannerIn { from{opacity:0; transform:translate(-50%,-50%) scale(.8);} to{opacity:1; transform:translate(-50%,-50%) scale(1);} }
+@keyframes atkBannerOut { to{opacity:0; transform:translate(-50%,-58%) scale(.95);} }
 .targeting-banner {
   background: linear-gradient(135deg, var(--civ-fire-dark), #4a2418);
   border:1px solid var(--civ-fire); border-radius:var(--r-sm); padding:9px 12px;
@@ -317,6 +332,15 @@ img, svg { display:block; }
 .mp-name { flex:1; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mp-tap { font-size:10px; color:var(--text-faint); }
 .lock-note { font-size:11px; color:var(--civ-fire); text-align:center; padding:4px 8px; }
+.card.frozen { filter:saturate(.25) brightness(.75); outline:1.5px solid #7fd4ff; outline-offset:-1.5px; }
+.card-frozen-tag { position:absolute; top:36%; left:0; right:0; text-align:center; font-size:9px; font-weight:700; color:#bfe9ff; background:rgba(30,80,120,.82); padding:2px 0; letter-spacing:.15em; }
+.stadium-row { display:flex; gap:6px; flex-wrap:wrap; padding:3px 8px; }
+.stadium-tile { width:158px; height:52px; border-radius:var(--r-sm); background:linear-gradient(120deg, var(--civ-water-dark), #0e2b3d); border:1px solid rgba(93,178,255,.35); display:flex; align-items:center; gap:8px; padding:5px 10px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.4); }
+.stadium-tile:hover { filter:brightness(1.2); }
+.stadium-name { flex:1; font-size:10.5px; font-weight:600; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.stadium-cnt { font-family:var(--font-display); font-size:14px; font-weight:700; color:var(--civ-light); }
+.stadium-cnt.ready { color:var(--civ-nature); animation:waiting-pulse 1.4s infinite; }
+.spec-pill { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--text-muted); background:rgba(255,255,255,.05); border-radius:12px; padding:2px 9px; }
 /* Shield zone ─────────────────────────── */
 .shield-zone { display:flex; align-items:center; justify-content:center; gap:8px; padding:7px 10px; min-height:56px; }
 .shield-tile { position:relative; width:38px; height:48px; flex-shrink:0; filter:drop-shadow(0 2px 6px rgba(0,0,0,.55)); }
@@ -372,6 +396,11 @@ const ABILITY_INFO = {
   deathtouch:    { label: '毒針',        kanji: '毒',  desc: 'バトル時、相手クリーチャーを必ず破壊する。' },
   shieldTrigger: { label: 'S・トリガー', kanji: 'ST',  desc: 'シールドから手札に加わったとき、コストを支払わずに使用できる。' },
   powerBreak:    { label: '剛撃',        kanji: '剛',  desc: 'パワー6000ごとに、ブレイクできるシールドが1枚増える(〜5999:1枚、6000〜:2枚、12000〜:3枚)。' },
+  spellBoost:    { label: '詠唱',        kanji: '詠',  desc: '自分が使う呪文のコストを1少なくする(重複する、最低1)。' },
+  freezeCast:    { label: '凍結',        kanji: '凍',  desc: '自分が呪文を使った時、相手のクリーチャー1体を選んでもよい。それは次の自分のターンの始めまで攻撃もブロックもできない。' },
+  tideBreak:     { label: '潮撃',        kanji: '潮',  desc: 'デッキに水文明のカードが18枚以上入っているなら、シールドを3枚ブレイクする。' },
+  graveSummon:   { label: '墓地召喚',    kanji: '墓',  desc: '墓地からもコストを1下げて召喚できる。' },
+  slowField:     { label: '時滞',        kanji: '滞',  desc: 'このクリーチャーがバトルゾーンにある間、相手のクリーチャーは出たターンに攻撃できない。' },
 };
 
 function effectText(effect, isEtb) {
@@ -396,8 +425,11 @@ function effectText(effect, isEtb) {
     case 'massTap':       return `${p}相手のクリーチャーをすべてタップする。`;
     case 'multiRegrow':   return `${p}自分の墓地のクリーチャーを${effect.count}体まで手札に戻す。`;
     case 'multiDiscard':  return `${p}相手は手札を${effect.count}枚ランダムで捨てる。`;
-    case 'miradante':     return `${p}コスト5以下の光の呪文を手札から無料で使用してよい。次の自分のターンの始めまで、相手はコスト5以下のクリーチャーを召喚できない。`;
+    case 'miradante':     return `${p}コスト5以下の光の呪文を手札から無料で使用してよい。次の自分のターンの始めまで、相手はコスト5以下のクリーチャーを出せない。`;
     case 'freeSummon':    return `手札から合計コスト${effect.budget}以下になるようにクリーチャーを出してよい。`;
+    case 'reviveSummon':  return `自分の手札または墓地から好きなクリーチャーを${effect.count}体まで場に出す。`;
+    case 'selfDiscard':   return `その後、自分の手札を1枚選んで捨てる。`;
+    case 'placeLimit':    return `${p}次の相手のターンの終わりまで、相手はクリーチャーを1体しか出せない。`;
     case 'graveShuffle': return `${p}自分の墓地のカードをすべて山札に加えてシャッフルし、その後1枚引く。`;
     case 'sequence':      return `${p}` + effect.steps.map(s => effectText(s, false)).join('');
     default: return '';
@@ -483,11 +515,18 @@ const RAW_CARDS = [
   {id:'d14', civ:'dark', type:'spell', name:'闇の処刑', cost:3, effect:{"type": "destroyAny"}},
   {id:'d15', civ:'dark', type:'spell', name:'手札破壊', cost:3, effect:{"type": "discardCard"}},
   {id:'m1', civ:'multi', civs:['water','light'], type:'creature', name:'時の法皇 ミラダンテXII', cost:4, power:12000, abilities:["speed","multiBreak","guard"], etb:{"type": "miradante"}, p1Only:true},
-  {id:'m2', civ:'multi', civs:['fire','nature'], type:'creature', name:'ドキラゴン剣', cost:6, power:12000, abilities:["speed","multiBreak"], etb:{"type": "sequence", "steps": [{"type":"draw","value":2},{"type":"freeSummon","budget":4}]}}
+  {id:'m2', civ:'multi', civs:['fire','nature'], type:'creature', name:'ドキラゴン剣', cost:6, power:12000, abilities:["speed","multiBreak"], etb:{"type": "sequence", "steps": [{"type":"draw","value":2},{"type":"freeSummon","budget":4}]}},
+  {id:'w18', civ:'water', type:'creature', name:'詠唱の魔導士ルーン', cost:3, power:2000, abilities:["spellBoost","freezeCast"]},
+  {id:'w19', civ:'water', type:'creature', name:'蒼波の襲撃者ザッパ', cost:4, power:3000, abilities:["speed","tideBreak"]},
+  {id:'w20', civ:'water', type:'stadium', name:'魔導書院アカシア', cost:2, text:'呪文を使うとき、その呪文をこの下に置くことでカードを1枚引いてよい。自分のターン終了時、下に呪文が4枚あれば、このカードと下のカードを墓地に置き、手札の呪文を1枚コストを支払わずに唱えてよい。'},
+  {id:'w21', civ:'water', type:'spell', name:'大海の創世', cost:15, effect:{"type": "sequence", "steps": [{"type":"draw","value":3},{"type":"reviveSummon","count":3}]}},
+  {id:'d18', civ:'dark', type:'spell', name:'闇との取引', cost:1, effect:{"type": "sequence", "steps": [{"type":"draw","value":2},{"type":"selfDiscard"}]}},
+  {id:'m3', civ:'multi', civs:['dark','nature'], type:'creature', name:'腐土の巨人ヨルムン', cost:5, power:8000, abilities:["guard","graveSummon","slowField"], etb:{"type": "sequence", "steps": [{"type":"destroyPowerLE","value":2000},{"type":"destroyPowerLE","value":2000}]}},
+  {id:'m4', civ:'multi', civs:['fire','light'], type:'creature', name:'閃光の騎士団長レイ', cost:5, power:4000, abilities:["speed"], etb:{"type": "placeLimit"}}
 ];
 
 RAW_CARDS.forEach(c => {
-  c.text = c.type === 'creature' ? (c.etb ? effectText(c.etb, true) : '') : effectText(c.effect, false);
+  if (!c.text) c.text = c.type === 'creature' ? (c.etb ? effectText(c.etb, true) : '') : (c.effect ? effectText(c.effect, false) : '');
   if (!c.abilities) c.abilities = [];
 });
 
@@ -507,7 +546,8 @@ function buildDeck() { return shuffle(RAW_CARDS.map(c => makeInstance(c.id))); }
 
 function createPlayer(name, deckIds) {
   const deck = deckIds ? shuffle(deckIds.map(id => makeInstance(id))) : buildDeck();
-  return { name, deck, hand: [], mana: [], battle: [], shields: [], graveyard: [], charged: false, acted: false };
+  const waterCount = deck.filter(c => { const d = getCardDef(c.defId); return d.civ === 'water' || (d.civs || []).includes('water'); }).length;
+  return { name, deck, hand: [], mana: [], battle: [], shields: [], graveyard: [], stadiums: [], charged: false, acted: false, waterCount };
 }
 
 function other(idx) { return idx === 0 ? 1 : 0; }
@@ -522,7 +562,7 @@ function createGame(name1, name2, deckIds1, deckIds2, firstIdx) {
   const state = {
     turnCount: 1, active: first,
     players: [createPlayer(name1 || 'プレイヤー1', deckIds1), createPlayer(name2 || 'プレイヤー2', deckIds2)],
-    log: [], pending: null, winner: null, summonLock: null, effectQueue: [],
+    log: [], pending: null, winner: null, summonLock: null, placeLimit: null, effectQueue: [],
   };
   state.players.forEach(p => {
     for (let i = 0; i < 5; i++) p.shields.push(p.deck.shift());
@@ -549,12 +589,13 @@ function drawCards(state, playerIdx, n) {
 function startTurn(state) {
   const p = state.players[state.active];
   p.mana.forEach(m => m.tapped = false);
-  p.battle.forEach(c => { c.tapped = false; c.sick = false; });
+  p.battle.forEach(c => { c.tapped = false; c.sick = false; c.justEntered = false; });
+  state.players.forEach(pl => pl.battle.forEach(c => { if (c.frozenBy === state.active) delete c.frozenBy; }));
   p.charged = false;
   p.acted = false;
   if (state.summonLock && state.summonLock.expiresAtTurnStartOf === state.active) {
     state.summonLock = null;
-    log(state, `召喚制限が解除された。`);
+    log(state, `時の封印が解除された。`);
   }
   log(state, `--- ターン${state.turnCount}: ${p.name} ---`);
   if (state.turnCount === 1) {
@@ -567,11 +608,24 @@ function startTurn(state) {
 function endTurn(state) {
   if (state.winner !== null || state.pending) return { ok: false };
   const p = state.players[state.active];
+  const ready = (p.stadiums || []).filter(s => s.under.length >= 4);
+  if (ready.length > 0) {
+    state.effectQueue = state.effectQueue || [];
+    const items = ready.map(s => ({ controllerIdx: state.active, effect: { type: '_stadiumTrigger', stadiumUid: s.uid } }));
+    state.effectQueue.unshift(...items, { controllerIdx: state.active, effect: { type: '_finishTurn' } });
+    drainEffectQueue(state);
+    return { ok: true };
+  }
+  finishTurn(state);
+  return { ok: true };
+}
+function finishTurn(state) {
+  const p = state.players[state.active];
   p.battle.forEach(c => { c.buff = 0; });
+  if (state.placeLimit && state.placeLimit.lockedIdx === state.active) state.placeLimit = null;
   state.active = other(state.active);
   state.turnCount++;
   startTurn(state);
-  return { ok: true };
 }
 
 function chargeMana(state, cardUid) {
@@ -589,14 +643,35 @@ function chargeMana(state, cardUid) {
 }
 
 function manaCivs(m) { const d = getCardDef(m.defId); return d.civs || [d.civ]; }
+function canPlaceCreature(state, playerIdx, def) {
+  if (state.summonLock && state.summonLock.lockedIdx === playerIdx && def.cost <= 5)
+    return { ok: false, reason: 'summon-locked' };
+  if (state.placeLimit && state.placeLimit.lockedIdx === playerIdx && state.placeLimit.remaining <= 0)
+    return { ok: false, reason: 'place-limited' };
+  return { ok: true };
+}
+function placeCreature(state, playerIdx, card, def) {
+  const p = state.players[playerIdx];
+  const inst = { uid: card.uid, defId: card.defId, tapped: false, sick: !def.abilities.includes('speed'), buff: 0, justEntered: true };
+  p.battle.push(inst);
+  if (state.placeLimit && state.placeLimit.lockedIdx === playerIdx) state.placeLimit.remaining--;
+  return inst;
+}
+function effectiveCost(state, playerIdx, def) {
+  if (def.type !== 'spell') return def.cost;
+  const boost = state.players[playerIdx].battle.filter(c => getCardDef(c.defId).abilities.includes('spellBoost')).length;
+  return Math.max(1, def.cost - boost);
+}
   
-function canPay(p, def) {
+function canPay(p, def, costOverride) {
+  const cost = (costOverride !== undefined) ? costOverride : def.cost;
   const untapped = p.mana.filter(m => !m.tapped);
-  if (untapped.length < def.cost) return false;
+  if (untapped.length < cost) return false;
   const civs = def.civs || [def.civ];
   return civs.every(cv => untapped.some(m => manaCivs(m).includes(cv)));
 }
-function payMana(p, def) {
+function payMana(p, def, costOverride) {
+  const cost = (costOverride !== undefined) ? costOverride : def.cost;
   const civs = def.civs || [def.civ];
   let paid = 0;
   for (const cv of civs) {
@@ -604,12 +679,13 @@ function payMana(p, def) {
     if (m) { m.tapped = true; paid++; }
   }
   for (const m of p.mana) {
-    if (paid >= def.cost) break;
+    if (paid >= cost) break;
     if (!m.tapped) { m.tapped = true; paid++; }
   }
 }
-function validManaSelection(p, def, uids) {
-  if (!Array.isArray(uids) || uids.length !== def.cost) return false;
+function validManaSelection(p, def, uids, costOverride) {
+  const cost = (costOverride !== undefined) ? costOverride : def.cost;
+  if (!Array.isArray(uids) || uids.length !== cost) return false;
   if (new Set(uids).size !== uids.length) return false;
   const cards = uids.map(u => p.mana.find(m => m.uid === u && !m.tapped));
   if (cards.some(c => !c)) return false;
@@ -623,27 +699,65 @@ function playCard(state, cardUid, manaUids) {
   const handCard = p.hand.find(c => c.uid === cardUid);
   if (!handCard) return { ok: false, reason: 'not-in-hand' };
   const def = getCardDef(handCard.defId);
-  if (state.summonLock && state.summonLock.lockedIdx === state.active && def.type === 'creature' && def.cost <= 5)
-    return { ok: false, reason: 'summon-locked' };
+  if (def.type === 'creature') {
+    const chk = canPlaceCreature(state, state.active, def);
+    if (!chk.ok) return chk;
+  }
+  const cost = effectiveCost(state, state.active, def);
   if (manaUids) {
-    if (!validManaSelection(p, def, manaUids)) return { ok: false, reason: 'invalid-mana' };
-  } else if (!canPay(p, def)) return { ok: false, reason: 'cannot-pay' };
+    if (!validManaSelection(p, def, manaUids, cost)) return { ok: false, reason: 'invalid-mana' };
+  } else if (!canPay(p, def, cost)) return { ok: false, reason: 'cannot-pay' };
 
   removeFromHand(p, cardUid);
   if (manaUids) manaUids.forEach(u => { const m = p.mana.find(x => x.uid === u); if (m) m.tapped = true; });
-  else payMana(p, def);
+  else payMana(p, def, cost);
   p.acted = true;
 
   if (def.type === 'creature') {
-    const inst = { uid: handCard.uid, defId: handCard.defId, tapped: false, sick: !def.abilities.includes('speed'), buff: 0 };
-    p.battle.push(inst);
+    placeCreature(state, state.active, handCard, def);
     log(state, `${p.name} が「${def.name}」を召喚した。`);
     if (def.etb) triggerEffect(state, state.active, def.etb);
+    if (!state.pending) drainEffectQueue(state);
+  } else if (def.type === 'stadium') {
+    p.stadiums.push({ uid: handCard.uid, defId: handCard.defId, under: [] });
+    log(state, `${p.name} が「${def.name}」を場に出した。`);
   } else {
-    p.graveyard.push(handCard);
     log(state, `${p.name} が「${def.name}」を使用した。`);
-    triggerEffect(state, state.active, def.effect);
+    castSpellEffects(state, state.active, handCard, def);
   }
+  return { ok: true };
+}
+function castSpellEffects(state, controllerIdx, card, def) {
+  state.effectQueue = state.effectQueue || [];
+  const steps = [];
+  if (def.effect) steps.push({ controllerIdx, effect: def.effect });
+  const runes = state.players[controllerIdx].battle.filter(c => getCardDef(c.defId).abilities.includes('freezeCast')).length;
+  if (runes > 0) steps.push({ controllerIdx, effect: { type: 'freezeChoose', count: runes } });
+  steps.push({ controllerIdx, effect: { type: '_stadiumPlace', card: { uid: card.uid, defId: card.defId } } });
+  state.effectQueue.unshift(...steps);
+  drainEffectQueue(state);
+}
+function playFromGrave(state, cardUid, manaUids) {
+  if (state.winner !== null || state.pending) return { ok: false };
+  const p = state.players[state.active];
+  const idx = p.graveyard.findIndex(c => c.uid === cardUid);
+  if (idx < 0) return { ok: false, reason: 'not-in-grave' };
+  const def = getCardDef(p.graveyard[idx].defId);
+  if (!def.abilities.includes('graveSummon')) return { ok: false, reason: 'no-grave-summon' };
+  const chk = canPlaceCreature(state, state.active, def);
+  if (!chk.ok) return chk;
+  const cost = Math.max(1, def.cost - 1);
+  if (manaUids) {
+    if (!validManaSelection(p, def, manaUids, cost)) return { ok: false, reason: 'invalid-mana' };
+  } else if (!canPay(p, def, cost)) return { ok: false, reason: 'cannot-pay' };
+  const card = p.graveyard.splice(idx, 1)[0];
+  if (manaUids) manaUids.forEach(u => { const m = p.mana.find(x => x.uid === u); if (m) m.tapped = true; });
+  else payMana(p, def, cost);
+  p.acted = true;
+  placeCreature(state, state.active, card, def);
+  log(state, `${p.name} が「${def.name}」を墓地から召喚した!`);
+  if (def.etb) triggerEffect(state, state.active, def.etb);
+  if (!state.pending) drainEffectQueue(state);
   return { ok: true };
 }
 
@@ -823,20 +937,68 @@ function triggerEffect(state, controllerIdx, effect) {
     }
     case 'freeSummon': {
       const budget = effect.budget || 4;
-      const locked = state.summonLock && state.summonLock.lockedIdx === controllerIdx;
       const options = controller.hand.filter(c => {
         const d = getCardDef(c.defId);
         if (d.type !== 'creature' || d.cost > budget) return false;
-        if (locked && d.cost <= 5) return false;
-        return true;
+        return canPlaceCreature(state, controllerIdx, d).ok;
       });
       if (options.length === 0) { if (!effect.silent) log(state, `(出せるクリーチャーがなかった)`); return; }
       state.pending = { type: 'chooseTarget', kind: 'freeSummon', controllerIdx, budget, skippable: true, options: options.map(c => c.uid) };
       return;
     }
+    case 'freezeChoose': {
+      const targets = opp.battle.filter(c => c.frozenBy === undefined);
+      if (targets.length === 0) return;
+      state.pending = { type: 'chooseTarget', kind: 'freeze', controllerIdx, skippable: true,
+        multi: Math.min(effect.count || 1, targets.length), options: targets.map(c => c.uid) };
+      return;
+    }
+    case 'selfDiscard': {
+      if (controller.hand.length === 0) { log(state, `(手札がなかった)`); return; }
+      state.pending = { type: 'chooseTarget', kind: 'selfDiscard', controllerIdx, options: controller.hand.map(c => c.uid) };
+      return;
+    }
+    case 'reviveSummon': {
+      const cnt = effect.count || 3;
+      const ok = c => { const d = getCardDef(c.defId); return d.type === 'creature' && canPlaceCreature(state, controllerIdx, d).ok; };
+      const opts = [...controller.hand.filter(ok), ...controller.graveyard.filter(ok)].map(c => c.uid);
+      if (opts.length === 0) { if (!effect.silent) log(state, `(出せるクリーチャーがなかった)`); return; }
+      state.pending = { type: 'chooseTarget', kind: 'reviveSummon', controllerIdx, skippable: true, multi: cnt, options: opts };
+      return;
+    }
+    case 'placeLimit': {
+      state.placeLimit = { lockedIdx: other(controllerIdx), remaining: 1 };
+      log(state, `${opp.name} は次の自分のターンの終わりまで、クリーチャーを1体しか出せない！`);
+      return;
+    }
+    case '_continueBreak': {
+      doBreak(state, effect.defIdx, effect.atkIdx, effect.remaining);
+      return;
+    }
+    case '_finishTurn': {
+      finishTurn(state);
+      return;
+    }
+    case '_stadiumPlace': {
+      if (!controller.stadiums || controller.stadiums.length === 0) { controller.graveyard.push(effect.card); return; }
+      state.pending = { type: 'chooseTarget', kind: 'stadiumPlace', controllerIdx, skippable: true,
+        card: effect.card, options: controller.stadiums.map(s => s.uid) };
+      return;
+    }
+    case '_stadiumTrigger': {
+      const s = (controller.stadiums || []).find(x => x.uid === effect.stadiumUid);
+      if (!s) return;
+      controller.stadiums = controller.stadiums.filter(x => x !== s);
+      controller.graveyard.push({ uid: s.uid, defId: s.defId }, ...s.under);
+      log(state, `「${getCardDef(s.defId).name}」の魔力が満ちた! 本体と下のカードが墓地に置かれた。`);
+      const opts = controller.hand.filter(c => getCardDef(c.defId).type === 'spell');
+      if (opts.length === 0) { log(state, `(手札に呪文がなかった)`); return; }
+      state.pending = { type: 'chooseTarget', kind: 'stadiumCast', controllerIdx, skippable: true, options: opts.map(c => c.uid) };
+      return;
+    }
     case 'miradante': {
       state.summonLock = { lockedIdx: other(controllerIdx), expiresAtTurnStartOf: controllerIdx };
-      log(state, `時の封印! ${opp.name} は次の${controller.name}のターン開始まで、コスト5以下のクリーチャーを召喚できない！`);
+      log(state, `時の封印! ${opp.name} は次の${controller.name}のターン開始まで、コスト5以下のクリーチャーを出せない！`);
       const options = controller.hand.filter(c => {
         const d = getCardDef(c.defId);
         return d.type === 'spell' && d.cost <= 5 && (d.civ === 'light' || (d.civs || []).includes('light'));
@@ -884,11 +1046,15 @@ function drainEffectQueue(state) {
 }
 function resolvePendingTarget(state, chosenUid) {
   if (state.winner !== null || !state.pending || state.pending.type !== 'chooseTarget') return { ok: false };
-  const { kind, controllerIdx, value, multi, skippable, budget } = state.pending;
+  const { kind, controllerIdx, value, multi, skippable, budget, card: pendCard } = state.pending;
   if (chosenUid === null) {
     if (!skippable) return { ok: false };
     state.pending = null;
-    log(state, `(使用しなかった)`);
+    if (kind === 'stadiumPlace' && pendCard) {
+      state.players[controllerIdx].graveyard.push(pendCard);
+    } else {
+      log(state, `(使用しなかった)`);
+    }
     drainEffectQueue(state);
     return { ok: true };
   }
@@ -930,11 +1096,77 @@ function resolvePendingTarget(state, chosenUid) {
       }
     }
   }
+  else if (kind === 'freeze') {
+    const oppP = state.players[other(controllerIdx)];
+    const c = oppP.battle.find(x => x.uid === chosenUid);
+    if (c) {
+      c.frozenBy = controllerIdx;
+      log(state, `「${getCardDef(c.defId).name}」は凍結された! (次の${state.players[controllerIdx].name}のターンまで攻撃・ブロック不可)`);
+    }
+  }
+  else if (kind === 'selfDiscard') {
+    const p = state.players[controllerIdx];
+    const i = p.hand.findIndex(x => x.uid === chosenUid);
+    if (i >= 0) {
+      const disc = p.hand.splice(i, 1)[0];
+      p.graveyard.push(disc);
+      log(state, `${p.name} が「${getCardDef(disc.defId).name}」を捨てた。`);
+    }
+  }
+  else if (kind === 'stadiumPlace') {
+    const p = state.players[controllerIdx];
+    const s = (p.stadiums || []).find(x => x.uid === chosenUid);
+    if (s && pendCard) {
+      s.under.push(pendCard);
+      log(state, `${p.name} は呪文を「${getCardDef(s.defId).name}」の下に置いた。(${s.under.length}枚)`);
+      drawCards(state, controllerIdx, 1);
+      if (state.winner === null) log(state, `${p.name} がカードを1枚引いた。`);
+    } else if (pendCard) {
+      p.graveyard.push(pendCard);
+    }
+  }
+  else if (kind === 'stadiumCast') {
+    const p = state.players[controllerIdx];
+    const i = p.hand.findIndex(x => x.uid === chosenUid);
+    if (i >= 0) {
+      const spellCard = p.hand.splice(i, 1)[0];
+      const d = getCardDef(spellCard.defId);
+      log(state, `${p.name} が「${d.name}」をコストを支払わずに唱えた!`);
+      castSpellEffects(state, controllerIdx, spellCard, d);
+    }
+  }
+  else if (kind === 'reviveSummon') {
+    const p = state.players[controllerIdx];
+    let rc = null;
+    const hi = p.hand.findIndex(x => x.uid === chosenUid);
+    if (hi >= 0) rc = p.hand.splice(hi, 1)[0];
+    else {
+      const gi = p.graveyard.findIndex(x => x.uid === chosenUid);
+      if (gi >= 0) rc = p.graveyard.splice(gi, 1)[0];
+    }
+    if (rc) {
+      const d = getCardDef(rc.defId);
+      placeCreature(state, controllerIdx, rc, d);
+      log(state, `${p.name} が「${d.name}」を場に出した!`);
+      const rem = (multi || 1) - 1;
+      if (d.etb) triggerEffect(state, controllerIdx, d.etb);
+      if (rem > 0) {
+        const cont = { type: 'reviveSummon', count: rem, silent: true };
+        if (state.pending) {
+          state.effectQueue = state.effectQueue || [];
+          state.effectQueue.unshift({ controllerIdx, effect: cont });
+        } else {
+          triggerEffect(state, controllerIdx, cont);
+        }
+      }
+    }
+  }
   /* Multi-target effects: re-open selection for remaining picks */
-  if (multi && multi > 1 && !state.pending && state.winner === null) {
+  if (multi && multi > 1 && !state.pending && state.winner === null && kind !== 'reviveSummon' && kind !== 'freeSummon') {
     let opts = [];
     if (kind === 'bounce') opts = state.players[other(controllerIdx)].battle.map(c => c.uid);
     else if (kind === 'regrow') opts = state.players[controllerIdx].graveyard.filter(c => getCardDef(c.defId).type === 'creature').map(c => c.uid);
+    else if (kind === 'freeze') opts = state.players[other(controllerIdx)].battle.filter(c => c.frozenBy === undefined).map(c => c.uid);
     if (opts.length > 0) state.pending = { type: 'chooseTarget', kind, controllerIdx, multi: multi - 1, options: opts };
   }
   if (!state.pending) drainEffectQueue(state);
@@ -952,6 +1184,9 @@ function declareAttack(state, attackerUid, targetType, targetUid) {
   const opp = state.players[other(state.active)];
   const attacker = p.battle.find(c => c.uid === attackerUid);
   if (!attacker || attacker.tapped || attacker.sick) return { ok: false, reason: 'invalid-attacker' };
+  if (attacker.frozenBy !== undefined) return { ok: false, reason: 'frozen' };
+  if (attacker.justEntered && opp.battle.some(c => getCardDef(c.defId).abilities.includes('slowField')))
+    return { ok: false, reason: 'slow-field' };
   if (targetType === 'creature' && !opp.battle.find(c => c.uid === targetUid)) return { ok: false, reason: 'invalid-target' };
   if (targetType === 'creature') {
     const tgt = opp.battle.find(c => c.uid === targetUid);
@@ -960,8 +1195,20 @@ function declareAttack(state, attackerUid, targetType, targetUid) {
 
   p.acted = true;
   attacker.tapped = true;
-  log(state, `${p.name} の「${getCardDef(attacker.defId).name}」が攻撃!`);
-  const blockers = opp.battle.filter(c => !c.tapped && getCardDef(c.defId).abilities.includes('guard') && c.uid !== targetUid);
+  const _atkName = getCardDef(attacker.defId).name;
+  let _tgtName = opp.name;
+  if (targetType === 'creature') {
+    const _tc = opp.battle.find(c => c.uid === targetUid);
+    _tgtName = _tc ? getCardDef(_tc.defId).name : 'クリーチャー';
+  }
+  state.lastAttack = {
+    seq: (state.lastAttack ? state.lastAttack.seq : 0) + 1,
+    attackerUid, attackerIdx: state.active,
+    targetType, targetUid: targetUid || null, defenderIdx: other(state.active),
+    atkName: _atkName, tgtName: _tgtName,
+  };
+  log(state, `${p.name} の「${getCardDef(attacker.defId).name}」が${targetType==='player'?'ダイレクトアタック':'攻撃'}!`);
+  const blockers = opp.battle.filter(c => !c.tapped && getCardDef(c.defId).abilities.includes('guard') && c.uid !== targetUid && c.frozenBy === undefined);
   if (blockers.length > 0) {
     state.pending = {
       type: 'block', attackerUid, targetType, targetUid,
@@ -1007,6 +1254,7 @@ function resolveCombat(state, attacker, targetType, targetUid, blockerUid) {
   }
   let breakCount = 1;
   if (attackerDef.abilities.includes('powerBreak')) breakCount = Math.floor(effectivePower(attacker) / 6000) + 1;
+  else if (attackerDef.abilities.includes('tideBreak') && state.players[atkIdx].waterCount >= 18) breakCount = 3;
   else if (attackerDef.abilities.includes('multiBreak')) breakCount = 2;
   breakShields(state, defIdx, atkIdx, breakCount);
 }
@@ -1063,22 +1311,36 @@ function resolveAmbush(state, choice) {
   state.pending = null;
   const p = state.players[controllerIdx];
   if (choice === 'play') {
-    const card = removeFromHand(p, cardUid);
-    const def = getCardDef(card.defId);
-    if (def.type === 'creature') {
-      const inst = { uid: card.uid, defId: card.defId, tapped: false, sick: !def.abilities.includes('speed'), buff: 0 };
-      p.battle.push(inst);
-      log(state, `${p.name} が${isST ? 'S・トリガー' : '奇襲'}で「${def.name}」を無料でプレイした!`);
-      if (def.etb) triggerEffect(state, controllerIdx, def.etb);
-    } else {
-      p.graveyard.push(card);
-      log(state, `${p.name} が${isST ? 'S・トリガー' : '奇襲'}で「${def.name}」を無料で使用した!`);
-      triggerEffect(state, controllerIdx, def.effect);
+    const handCard = p.hand.find(c => c.uid === cardUid);
+    const def = handCard ? getCardDef(handCard.defId) : null;
+    if (def && def.type === 'creature' && !canPlaceCreature(state, controllerIdx, def).ok) {
+      log(state, `(出す制限があるため手札に加えた)`);
+    } else if (def) {
+      removeFromHand(p, cardUid);
+      if (def.type === 'creature') {
+        placeCreature(state, controllerIdx, handCard, def);
+        log(state, `${p.name} が${isST ? 'S・トリガー' : '奇襲'}で「${def.name}」を無料でプレイした!`);
+        if (def.etb) triggerEffect(state, controllerIdx, def.etb);
+      } else if (def.type === 'stadium') {
+        p.stadiums.push({ uid: handCard.uid, defId: handCard.defId, under: [] });
+        log(state, `${p.name} が${isST ? 'S・トリガー' : '奇襲'}で「${def.name}」を場に出した!`);
+      } else {
+        log(state, `${p.name} が${isST ? 'S・トリガー' : '奇襲'}で「${def.name}」を無料で使用した!`);
+        castSpellEffects(state, controllerIdx, handCard, def);
+      }
     }
   } else {
     log(state, `${p.name} はそのまま手札に加えた。`);
   }
-  if (!state.pending && state.winner === null) doBreak(state, defIdx, atkIdx, remaining);
+  if (state.winner === null && remaining > 0) {
+    if (!state.pending) {
+      doBreak(state, defIdx, atkIdx, remaining);
+    } else {
+      state.effectQueue = state.effectQueue || [];
+      state.effectQueue.unshift({ controllerIdx: atkIdx, effect: { type: '_continueBreak', defIdx, atkIdx, remaining } });
+    }
+  }
+  if (!state.pending && state.winner === null) drainEffectQueue(state);
   return { ok: true };
 }
 /* =====================================================================
@@ -1095,11 +1357,14 @@ const ui = {
   selectedAttackerUid: null, modal: null, graveyardView: null,
   deckView: 'pool',
   manaPay: null, manaSelected: [],
-  breakAnim: null, prevShields: null,
+  breakAnim: null, prevShields: null, spectatorCount: 0,
+  attackAnim: null, prevAttackSeq: 0,
 };
 let deckInProgress=[], deckFilter='all', deckSearch='';
 let playerName='プレイヤー1';
 let hostDeckIds=null, guestDeckIds=null, guestPlayerName='プレイヤー2';
+let spectators=[];
+let joinMode='play';
 let turnChoice='random'; // 'first' | 'second' | 'random' (HOST only)
 
 function decideFirstIdx(){
@@ -1119,6 +1384,7 @@ function loadSavedDecks(){ try{return JSON.parse(localStorage.getItem('five-cres
 
 /* ── Turn logic ── */
 function isMyDecision(){
+  if(ui.role==='spectator') return false;
   if(!game||game.winner!==null) return false;
   if(!game.pending) return game.active===ui.myIdx;
   const p=game.pending;
@@ -1134,6 +1400,7 @@ function applyAction(msg){
   const k=msg.kind;
   if     (k==='chargeMana')    chargeMana(game,msg.uid);
   else if(k==='playCard')      playCard(game,msg.uid,msg.manaUids);
+  else if(k==='playFromGrave') playFromGrave(game,msg.uid,msg.manaUids);
   else if(k==='attackPlayer')  declareAttack(game,msg.attackerUid,'player',null);
   else if(k==='attackCreature') declareAttack(game,msg.attackerUid,'creature',msg.targetUid);
   else if(k==='blockChoose')   resolveBlock(game,msg.blockerUid);
@@ -1145,8 +1412,13 @@ function applyAction(msg){
   else if(k==='endTurn')       endTurn(game);
 }
 function sendToPeer(data){ if(conn&&conn.open) conn.send(data); }
-function broadcastState(){ if(ui.role==='host'&&game) sendToPeer({type:'STATE',game:JSON.stringify(game)}); }
-function afterEngineAction(){ broadcastState(); detectShieldBreak(); if(game.winner!==null) ui.screen='gameover'; render(); }
+function broadcastState(){
+  if(ui.role!=='host'||!game) return;
+  const msg={type:'STATE',game:JSON.stringify(game),spectators:spectators.length};
+  if(conn&&conn.open) conn.send(msg);
+  spectators.forEach(s=>{ try{ if(s.open) s.send(msg); }catch(e){} });
+}
+function afterEngineAction(){ broadcastState(); detectAttack(); detectShieldBreak(); if(game.winner!==null) ui.screen='gameover'; render(); }
 function dispatchAction(msg){
   ui.modal=null; ui.graveyardView=null; ui.selectedAttackerUid=null; ui.manaPay=null; ui.manaSelected=[];
   if(ui.role==='host'){ applyAction(msg); afterEngineAction(); }
@@ -1163,18 +1435,25 @@ function handlePeerData(data){
   if(ui.role==='host'){
     if(data.type==='DECK_READY'){
       guestDeckIds=data.deck; guestPlayerName=data.name||'プレイヤー2';
-      if(hostDeckIds){ game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds,decideFirstIdx()); ui.prevShields=null; ui.breakAnim=null; ui.screen='play'; broadcastState(); render(); }
+      if(hostDeckIds){ game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds,decideFirstIdx()); ui.prevShields=null; ui.breakAnim=null; ui.prevAttackSeq=0; ui.attackAnim=null; ui.screen='play'; broadcastState(); render(); }
     } else if(data.type==='ACTION'){ applyAction(data); afterEngineAction(); }
   } else {
     if(data.type==='STATE'){
       game=JSON.parse(data.game);
+      ui.spectatorCount=data.spectators||0;
+      detectAttack();
       detectShieldBreak();
       ui.screen=game.winner!==null?'gameover':'play';
       ui.selectedAttackerUid=null; ui.modal=null; ui.graveyardView=null; ui.manaPay=null; ui.manaSelected=[]; render();
+    } else if(data.type==='WAIT'){
+      ui.screen='spectatorWait'; render();
     } else if(data.type==='RESTART'){
-      hostDeckIds=null; guestDeckIds=null;
-      deckInProgress=[]; deckFilter='all'; deckSearch=''; ui.deckView='pool';
-      ui.screen='deckBuilder'; render();
+      if(ui.role==='spectator'){ ui.screen='spectatorWait'; render(); }
+      else {
+        hostDeckIds=null; guestDeckIds=null;
+        deckInProgress=[]; deckFilter='all'; deckSearch=''; ui.deckView='pool';
+        ui.screen='deckBuilder'; render();
+      }
     }
   }
 }
@@ -1210,7 +1489,20 @@ function createRoom(){
   peer=new Peer('five-crest-'+roomCode.toLowerCase(), PEER_CONFIG);
   peer.on('open',()=>{ ui.screen='waitingForPeer'; render(); });
   peer.on('connection',c=>{
-    // Reject extra connections: this room already has an opponent
+    if(c.metadata && c.metadata.spectator){
+      spectators.push(c);
+      c.on('open',()=>{
+        try{
+          if(game) c.send({type:'STATE',game:JSON.stringify(game),spectators:spectators.length});
+          else c.send({type:'WAIT'});
+        }catch(e){}
+        broadcastState(); render();
+      });
+      c.on('close',()=>{ spectators=spectators.filter(x=>x!==c); broadcastState(); render(); });
+      c.on('error',()=>{ spectators=spectators.filter(x=>x!==c); });
+      return;
+    }
+    // Reject extra player connections: this room already has an opponent
     if(conn && conn.open){
       c.on('open',()=>{ try{ c.send({type:'ROOM_FULL'}); }catch(e){} setTimeout(()=>{try{c.close();}catch(e){}},300); });
       return;
@@ -1238,8 +1530,9 @@ function createRoom(){
     }
   });
 }
-function joinRoom(code){
-  ui.role='guest'; ui.myIdx=1; playerName='プレイヤー2';
+function joinRoom(code, spectate){
+  if(spectate){ ui.role='spectator'; ui.myIdx=0; }
+  else { ui.role='guest'; ui.myIdx=1; playerName='プレイヤー2'; }
   ui.screen='connecting'; render();
   destroyPeer();
   const targetId='five-crest-'+code.trim().toLowerCase();
@@ -1248,9 +1541,10 @@ function joinRoom(code){
   peer=new Peer(PEER_CONFIG);
   function tryConnect(){
     if(!peer||peer.destroyed||ui.screen!=='connecting')return;
-    const c=peer.connect(targetId,{reliable:true,serialization:'json'});
+    const c=peer.connect(targetId,{reliable:true,serialization:'json',metadata:{spectator:!!spectate}});
     attachConn(c);
     c.on('open',()=>{
+      if(spectate){ ui.screen='spectatorWait'; render(); return; }
       hostDeckIds=null; guestDeckIds=null;
       deckInProgress=[]; deckFilter='all'; deckSearch=''; ui.deckView='pool';
       ui.screen='deckBuilder'; render();
@@ -1290,11 +1584,12 @@ function abilityBadges(ab){ if(!ab||!ab.length)return ''; return `<div class="ca
 function cardFootHTML(def,opts){
   if(def.type==='creature'){const tot=def.power+(opts.buff||0);const pd=opts.buff?`${tot}<span style="font-size:.62em;opacity:.85;"> (+${opts.buff})</span>`:`${tot}`;return `<div class="card-foot" style="justify-content:space-between;">${abilityBadges(def.abilities)}<span class="card-power">${pd}</span></div>`;}
   const spAb=(def.abilities&&def.abilities.length)?abilityBadges(def.abilities):'';
-  return `<div class="card-foot" style="justify-content:${spAb?'space-between':'flex-start'};"><span style="font-family:var(--font-card);font-size:${opts.large?'11px':'8px'};color:var(--text-muted);">呪文</span>${spAb}</div>`;
+  const typeLabel = def.type==='stadium' ? 'スタジアム' : '呪文';
+  return `<div class="card-foot" style="justify-content:${spAb?'space-between':'flex-start'};"><span style="font-family:var(--font-card);font-size:${opts.large?'11px':'8px'};color:var(--text-muted);">${typeLabel}</span>${spAb}</div>`;
 }
 function cardHTML(defId,opts){
   opts=opts||{};const def=getCardDef(defId);const cls=['card'];
-  if(opts.large)cls.push('lg');if(opts.tapped)cls.push('tapped');if(opts.sick)cls.push('sick');
+  if(opts.large)cls.push('lg');if(opts.tapped)cls.push('tapped');if(opts.sick)cls.push('sick');if(opts.frozen)cls.push('frozen');if(opts.attacking)cls.push('attacking');if(opts.beingHit)cls.push('being-hit');
   if(opts.inert)cls.push('inert');
   if(opts.selectable&&!opts.inert)cls.push('selectable');else cls.push('not-selectable');
   if(opts.selected)cls.push('selected-attacker');if(opts.validTarget)cls.push('valid-target');
@@ -1303,7 +1598,7 @@ function cardHTML(defId,opts){
     <div class="card-head"><div class="card-cost">${def.cost}</div><div class="card-name">${esc(def.name)}</div></div>
     <div class="card-art">${CIV_ICON[def.civ]}</div>
     <div class="card-body"><div class="card-text">${esc(def.text)}</div></div>
-    ${cardFootHTML(def,opts)}${opts.sick?'<div class="card-sick-tag">準備中</div>':''}
+    ${cardFootHTML(def,opts)}${opts.sick?'<div class="card-sick-tag">準備中</div>':''}${opts.frozen?'<div class="card-frozen-tag">凍 結</div>':''}
   </div>`;
 }
 function cardBackHTML(large){ return `<div class="card card-back not-selectable${large?' lg':''}" style="height:${large?'196px':'110px'};"><div class="mark"></div></div>`; }
@@ -1340,7 +1635,7 @@ function deckBuilderScreenHTML(){
   const connStatus = conn&&conn.open ? `<div class="conn-pill"><div class="conn-dot ok"></div>接続中</div>` : `<div class="conn-pill"><div class="conn-dot wait"></div>待機中</div>`;
   return `<div class="db-screen">
     <div class="db-header">
-      <input class="name-inp" id="nameInp" type="text" value="${esc(playerName)}" placeholder="あなたの名前">
+      <input class="name-inp" id="nameInp" type="text" maxlength="10" value="${esc(playerName)}" placeholder="あなたの名前">
       ${connStatus}
       <div class="db-count${isReady?' ready':''}" style="margin-left:auto;">${total}<span style="font-size:11px;opacity:.6;">/40</span></div>
       <button class="btn btn-primary btn-sm" data-action="db-ready" ${isReady?'':'disabled'}>準備完了 ▶</button>
@@ -1350,7 +1645,7 @@ function deckBuilderScreenHTML(){
       <div class="db-search-row">
         <input class="db-srch" id="dbSrch" type="text" placeholder="カード名検索..." value="${esc(deckSearch)}">
         <div class="db-save-row">
-          <input class="deck-name-inp" id="deckNameInp" type="text" placeholder="デッキ名">
+          <input class="deck-name-inp" id="deckNameInp" type="text" maxlength="15" placeholder="デッキ名">
           <button class="btn btn-ghost btn-sm" data-action="db-save">保存</button>
           <select id="deckLoadSel" style="font-size:11px;background:var(--bg-panel-raised);border:1px solid rgba(255,255,255,.12);color:var(--text-primary);border-radius:var(--r-sm);padding:4px 6px;">${savedOpts||'<option value="">保存なし</option>'}</select>
           <button class="btn btn-ghost btn-sm" data-action="db-load">読み込み</button>
@@ -1385,15 +1680,24 @@ function shieldPipsHTML(p){let s='';for(let i=0;i<5;i++)s+=`<span class="shield-
 function playerHeaderHTML(idx,showDot){const p=getPlayer(idx);return `<div class="player-header"><div class="player-name-block"><span class="player-name">${showDot?'<span class="turn-dot"></span>':''}${esc(p.name)}</span></div><div class="meta-pips"><span class="deck-count" title="山札 残り${p.deck.length}枚">${ICON_DECK}${p.deck.length}</span><span class="gy-count" data-action="view-graveyard" data-owner="${idx}" title="墓地">${ICON_GY}${p.graveyard.length}</span></div></div>`;}
 function battleZoneHTML(idx){
   const p=getPlayer(idx),isMyZone=idx===ui.myIdx,canAct=isMyDecision(),tgt=!!ui.selectedAttackerUid;
-  if(!p.battle.length)return `<div class="battle-zone"><span class="empty-zone-hint">バトルゾーンは空です</span></div>`;
-  return `<div class="battle-zone">${p.battle.map(c=>{
-    const opts={tapped:c.tapped,sick:c.sick,buff:c.buff};
+  const oppP=getPlayer(other(idx));
+  const oppHasSlow=oppP.battle.some(c=>getCardDef(c.defId).abilities.includes('slowField'));
+  const stadiumsHTML=(p.stadiums&&p.stadiums.length)?`<div class="stadium-row">${p.stadiums.map(s=>{
+    const sd=getCardDef(s.defId);
+    return `<div class="stadium-tile" data-action="view-stadium" data-uid="${esc(s.uid)}" data-owner="${idx}"><span class="stadium-name">${esc(sd.name)}</span><span class="stadium-cnt${s.under.length>=4?' ready':''}">${s.under.length}/4</span></div>`;
+  }).join('')}</div>`:'';
+  if(!p.battle.length)return `${stadiumsHTML}<div class="battle-zone"><span class="empty-zone-hint">バトルゾーンは空です</span></div>`;
+  const aa=ui.attackAnim;
+  return `${stadiumsHTML}<div class="battle-zone">${p.battle.map(c=>{
+    const opts={tapped:c.tapped,sick:c.sick,buff:c.buff,frozen:c.frozenBy!==undefined};
+    if(aa){ if(c.uid===aa.attackerUid)opts.attacking=true; else if(aa.targetType==='creature'&&c.uid===aa.targetUid)opts.beingHit=true; }
+    const cantAtk=c.frozenBy!==undefined||(c.justEntered&&oppHasSlow);
     if(tgt&&canAct&&!isMyZone){
       if(c.tapped){opts.selectable=true;opts.validTarget=true;opts.action='attack-creature';opts.uid=c.uid;}
       else{opts.selectable=true;opts.action='view-card';opts.uid=c.uid;}
     }
-    else if(tgt&&canAct&&isMyZone){if(c.uid===ui.selectedAttackerUid){opts.selectable=true;opts.selected=true;opts.action='cancel-attack';}else if(!c.tapped&&!c.sick){opts.selectable=true;opts.action='select-attacker';opts.uid=c.uid;}else{opts.selectable=true;opts.action='view-card';opts.uid=c.uid;}}
-    else if(!tgt&&canAct&&isMyZone&&!c.tapped&&!c.sick){opts.selectable=true;opts.action='select-attacker';opts.uid=c.uid;}
+    else if(tgt&&canAct&&isMyZone){if(c.uid===ui.selectedAttackerUid){opts.selectable=true;opts.selected=true;opts.action='cancel-attack';}else if(!c.tapped&&!c.sick&&!cantAtk){opts.selectable=true;opts.action='select-attacker';opts.uid=c.uid;}else{opts.selectable=true;opts.action='view-card';opts.uid=c.uid;}}
+    else if(!tgt&&canAct&&isMyZone&&!c.tapped&&!c.sick&&!cantAtk){opts.selectable=true;opts.action='select-attacker';opts.uid=c.uid;}
     else{opts.selectable=true;opts.action='view-card';opts.uid=c.uid;}
     return cardHTML(c.defId,opts);
   }).join('')}</div>`;
@@ -1401,7 +1705,7 @@ function battleZoneHTML(idx){
 function handRowHTML(idx){
   const p=getPlayer(idx),isMyHand=idx===ui.myIdx,canAct=isMyDecision(),tgt=!!ui.selectedAttackerUid;
   if(!p.hand.length)return `<div class="hand-row"><span class="empty-zone-hint">手札なし</span></div>`;
-  if(!isMyHand)return `<div class="hand-row">${p.hand.map(()=>cardBackHTML(false)).join('')}</div>`;
+  if(!isMyHand||ui.role==='spectator')return `<div class="hand-row">${p.hand.map(()=>cardBackHTML(false)).join('')}</div>`;
   return `<div class="hand-row">${p.hand.map(c=>{const opts=(canAct&&!tgt)?{selectable:true,action:'open-hand-card',uid:c.uid}:{};return cardHTML(c.defId,opts);}).join('')}</div>`;
 }
 function shieldTileHTML(breaking){
@@ -1417,6 +1721,27 @@ function shieldRowHTML(idx){
   const warn=p.shields.length===0?' empty-warn':'';
   return `<div class="shield-zone${warn}">${tiles}<span class="shield-zone-label">${p.shields.length===0?'シールドなし!':p.shields.length}</span></div>`;
 }
+function detectAttack(){
+  if(!game||!game.lastAttack){return;}
+  const la=game.lastAttack;
+  if(la.seq===ui.prevAttackSeq){return;}
+  ui.prevAttackSeq=la.seq;
+  // Names captured at declare-time (survive destruction)
+  const atkName=la.atkName||'クリーチャー';
+  const targetName=la.tgtName||(la.targetType==='player'?game.players[la.defenderIdx].name:'クリーチャー');
+  const direct=la.targetType==='player';
+  ui.attackAnim={ seq:la.seq, attackerUid:la.attackerUid, targetUid:la.targetUid,
+    targetType:la.targetType, atkName, targetName, direct, ts:Date.now() };
+  setTimeout(()=>{ if(ui.attackAnim&&ui.attackAnim.seq===la.seq){ui.attackAnim=null;render();} }, 1600);
+}
+function attackBannerHTML(){
+  if(!ui.attackAnim)return '';
+  const a=ui.attackAnim;
+  if(a.direct){
+    return `<div class="attack-banner direct"><div class="ab-main">⚔ ${esc(a.atkName)} <span class="ab-arrow">➤</span> ${esc(a.targetName)}</div><div class="ab-sub">ダイレクトアタック!</div></div>`;
+  }
+  return `<div class="attack-banner"><div class="ab-main">⚔ ${esc(a.atkName)} <span class="ab-arrow">➤</span> ${esc(a.targetName)}</div><div class="ab-sub">アタック</div></div>`;
+}
 function detectShieldBreak(){
   if(!game){ui.prevShields=null;return;}
   const cur=[game.players[0].shields.length,game.players[1].shields.length];
@@ -1430,12 +1755,13 @@ function detectShieldBreak(){
   }
   ui.prevShields=cur;
 }
-function opponentRowHTML(){const oi=other(ui.myIdx),p=getPlayer(oi),tgt=!!ui.selectedAttackerUid&&isMyDecision();return `<div class="player-row opponent">${playerHeaderHTML(oi,game.active===oi)}${tgt?`<div class="target-face valid-target" data-action="attack-player">${esc(p.name)} を直接攻撃 ⟶</div>`:''}${manaRowHTML(p)}${battleZoneHTML(oi)}${handRowHTML(oi)}</div>`;}
+function opponentRowHTML(){const oi=other(ui.myIdx),p=getPlayer(oi),tgt=!!ui.selectedAttackerUid&&isMyDecision();const beingHitDirect=ui.attackAnim&&ui.attackAnim.direct&&ui.attackAnim.targetType==='player'&&game.lastAttack&&game.lastAttack.defenderIdx===oi;return `<div class="player-row opponent">${playerHeaderHTML(oi,game.active===oi)}${tgt?`<div class="target-face valid-target" data-action="attack-player">${esc(p.name)} を直接攻撃 ⟶</div>`:''}${manaRowHTML(p)}${battleZoneHTML(oi)}${handRowHTML(oi)}</div>`;}
 function myRowHTML(){const p=getPlayer(ui.myIdx);return `<div class="player-row mine">${battleZoneHTML(ui.myIdx)}${manaRowHTML(p)}${handRowHTML(ui.myIdx)}${playerHeaderHTML(ui.myIdx,game.active===ui.myIdx)}</div>`;}
 function centerStripHTML(){
   const p=getPlayer(game.active),myTurn=isMyDecision(),tgt=!!ui.selectedAttackerUid,canEnd=myTurn&&!tgt&&!game.pending;
   const log=game.log.slice(-6).map((l,i)=>`<div class="${i===game.log.slice(-6).length-1?'latest':''}">${esc(l)}</div>`).join('');
-  return `<div class="center-strip"><div class="turn-indicator"><span class="turn-text"><span class="n">ターン${game.turnCount}</span>${esc(p.name)}の番</span><button class="btn btn-primary btn-sm" data-action="end-turn" ${canEnd?'':'disabled'}>ターン終了</button></div><div class="log-feed" id="logFeed">${log}</div>${!myTurn?`<div class="waiting-banner">${esc(p.name)} が行動中 — 待機中...</div>`:''}</div>`;
+  const specN=ui.role==='host'?spectators.length:ui.spectatorCount;
+  return `<div class="center-strip"><div class="turn-indicator"><span class="turn-text"><span class="n">ターン${game.turnCount}</span>${esc(p.name)}の番</span>${specN>0?`<span class="spec-pill">👁 ${specN}</span>`:''}<button class="btn btn-primary btn-sm" data-action="end-turn" ${canEnd?'':'disabled'}>ターン終了</button></div><div class="log-feed" id="logFeed">${log}</div>${!myTurn?`<div class="waiting-banner">${esc(p.name)} が行動中 — 待機中...</div>`:''}</div>`;
 }
 function renderBoard(){return `<div class="board">${opponentRowHTML()}${shieldRowHTML(other(ui.myIdx))}<div class="spectrum-bar"></div>${centerStripHTML()}<div class="spectrum-bar"></div>${shieldRowHTML(ui.myIdx)}${myRowHTML()}</div>`;}
 
@@ -1450,15 +1776,23 @@ function pendingModalHTML(){
   if(pend.type==='block'){const def=getPlayer(pend.defenderIdx),atk=getPlayer(pend.attackerIdx).battle.find(c=>c.uid===pend.attackerUid),aDef=atk?getCardDef(atk.defId):null;const opts=pend.options.map(uid=>{const c=def.battle.find(x=>x.uid===uid);return cardHTML(c.defId,{action:'block-choose',uid,selectable:true});}).join('');return `<div class="modal-overlay"><div class="modal-box"><div class="modal-title">${esc(def.name)}: ブロックしますか?</div><div style="text-align:center;font-size:12.5px;color:var(--text-muted);">「${esc(aDef?aDef.name:'')}」の攻撃</div><div class="target-grid">${opts}</div><div class="modal-actions"><button class="btn btn-ghost btn-block" data-action="block-decline">ブロックしない</button></div></div></div>`;}
   if(pend.type==='ambush'){const p=getPlayer(pend.controllerIdx),hc=p.hand.find(c=>c.uid===pend.cardUid);if(!hc)return '';const card=getCardDef(hc.defId);const stLabel=pend.isST?'S・トリガー発動!':'奇襲発動!';return `<div class="modal-overlay"><div class="modal-box"><div class="modal-title">${stLabel}</div><div class="modal-card-preview">${cardHTML(card.id,{large:true})}</div><div style="text-align:center;font-size:12.5px;color:var(--text-muted);">無料でプレイしますか?</div><div class="modal-actions row"><button class="btn btn-ghost" data-action="ambush-keep">手札に加える</button><button class="btn btn-primary" data-action="ambush-play">無料でプレイ</button></div></div></div>`;}
   if(pend.type==='chooseTarget'){
-    const labels={regrow:'墓地から戻すクリーチャーを選択',bounce:'手札に戻すクリーチャーを選択',destroy:'破壊するクリーチャーを選択',destroyAny:'破壊するクリーチャーを選択',tap:'タップするクリーチャーを選択',buff:'パワーを上げるクリーチャーを選択',freeSpell:'無料で使用する光の呪文を選択',freeSummon:'無料で召喚するクリーチャーを選択'};
+    const labels={regrow:'墓地から戻すクリーチャーを選択',bounce:'手札に戻すクリーチャーを選択',destroy:'破壊するクリーチャーを選択',destroyAny:'破壊するクリーチャーを選択',tap:'タップするクリーチャーを選択',buff:'パワーを上げるクリーチャーを選択',freeSpell:'無料で使用する光の呪文を選択',freeSummon:'無料で召喚するクリーチャーを選択',freeze:'凍結するクリーチャーを選択',selfDiscard:'捨てるカードを選択',stadiumPlace:'呪文をどのスタジアムの下に置く?(+1ドロー)',stadiumCast:'コストを支払わずに唱える呪文を選択',reviveSummon:'場に出すクリーチャーを選択(手札/墓地)'};
     let zone;
     if(pend.kind==='regrow')zone=getPlayer(pend.controllerIdx).graveyard;
     else if(pend.kind==='buff')zone=getPlayer(pend.controllerIdx).battle;
-    else if(pend.kind==='freeSpell'||pend.kind==='freeSummon')zone=getPlayer(pend.controllerIdx).hand;
+    else if(pend.kind==='freeSpell'||pend.kind==='freeSummon'||pend.kind==='selfDiscard'||pend.kind==='stadiumCast')zone=getPlayer(pend.controllerIdx).hand;
+    else if(pend.kind==='reviveSummon')zone=[...getPlayer(pend.controllerIdx).hand,...getPlayer(pend.controllerIdx).graveyard];
     else zone=getPlayer(other(pend.controllerIdx)).battle;
-    const opts=pend.options.map(uid=>{const c=zone.find(x=>x.uid===uid);if(!c)return '';return cardHTML(c.defId,{action:'target-choose',uid,selectable:true});}).join('');
+    let opts;
+    if(pend.kind==='stadiumPlace'){
+      const stads=getPlayer(pend.controllerIdx).stadiums||[];
+      opts=pend.options.map(uid=>{const s=stads.find(x=>x.uid===uid);if(!s)return '';const sd=getCardDef(s.defId);return `<div class="stadium-tile" data-action="target-choose" data-uid="${esc(uid)}" style="width:100%;"><span class="stadium-name">${esc(sd.name)}</span><span class="stadium-cnt">${s.under.length}/4</span></div>`;}).join('');
+    } else {
+      opts=pend.options.map(uid=>{const c=zone.find(x=>x.uid===uid);if(!c)return '';return cardHTML(c.defId,{action:'target-choose',uid,selectable:true});}).join('');
+    }
     const multiNote=pend.multi&&pend.multi>1?`<div style="text-align:center;font-size:11px;color:var(--text-muted);">あと${pend.multi}体選べます</div>`:pend.kind==='freeSummon'?`<div style="text-align:center;font-size:11px;color:var(--text-muted);">残りコスト: ${pend.budget}</div>`:'';
-    const skipBtn=pend.skippable?'<div class="modal-actions"><button class="btn btn-ghost btn-block" data-action="target-skip">使用しない</button></div>':'';
+    const skipLabels={stadiumPlace:'下に置かない(墓地へ)',freeze:'凍結しない',stadiumCast:'唱えない',reviveSummon:'これで終える',freeSummon:'これで終える',freeSpell:'使用しない'};
+    const skipBtn=pend.skippable?`<div class="modal-actions"><button class="btn btn-ghost btn-block" data-action="target-skip">${skipLabels[pend.kind]||'使用しない'}</button></div>`:'';
     return `<div class="modal-overlay"><div class="modal-box"><div class="modal-title">${esc(labels[pend.kind]||'対象を選択')}</div>${multiNote}<div class="target-grid">${opts}</div>${skipBtn}</div></div>`;
   }
   return '';
@@ -1470,16 +1804,21 @@ function cardModalHTML(){
   if(kind==='hand'){
     const p=getPlayer(ui.myIdx),mt=isMyDecision();
     const locked=game.summonLock&&game.summonLock.lockedIdx===ui.myIdx&&def.type==='creature'&&def.cost<=5;
+    const pLimited=game.placeLimit&&game.placeLimit.lockedIdx===ui.myIdx&&game.placeLimit.remaining<=0&&def.type==='creature';
+    const eCost=effectiveCost(game,ui.myIdx,def);
     const cc=mt&&!p.charged&&!p.acted;
-    const cp=mt&&canPay(p,def)&&!locked;
+    const cp=mt&&canPay(p,def,eCost)&&!locked&&!pLimited;
     return `<div class="modal-overlay"><div class="modal-box"><div class="modal-card-preview">${cardHTML(card.defId,{large:true})}</div>
-    ${locked?'<div class="lock-note">⛓ 時の封印: コスト5以下のクリーチャーは召喚できません</div>':''}
+    ${locked?'<div class="lock-note">⛓ 時の封印: コスト5以下のクリーチャーは出せません</div>':''}
+    ${pLimited?'<div class="lock-note">⛓ このターンはもうクリーチャーを出せません</div>':''}
+    ${(def.type==='spell'&&eCost<def.cost)?`<div style="font-size:11px;color:var(--civ-water);text-align:center;">詠唱: コスト${def.cost}→${eCost}</div>`:''}
     ${!cc&&mt&&!p.charged?'<div style="font-size:11px;color:var(--text-faint);text-align:center;">※マナチャージはターン最初の行動でのみ可能</div>':''}
     <div class="modal-actions"><button class="btn btn-primary btn-block" data-action="open-mana-pay" data-uid="${esc(uid)}" ${cp?'':'disabled'}>${def.type==='creature'?'召喚する':'使用する'}</button><button class="btn btn-ghost btn-block" data-action="charge-mana" data-uid="${esc(uid)}" ${cc?'':'disabled'}>マナゾーンに置く</button><button class="btn btn-ghost btn-block" data-action="close-modal">閉じる</button></div></div></div>`;
   }
   return `<div class="modal-overlay"><div class="modal-box"><div class="modal-card-preview">${cardHTML(card.defId,{large:true,tapped:card.tapped,sick:card.sick,buff:card.buff})}</div><div class="modal-actions"><button class="btn btn-ghost btn-block" data-action="close-modal">閉じる</button></div></div></div>`;
 }
-function autoSelectMana(p,def){
+function autoSelectMana(p,def,costOverride){
+  const cost=(costOverride!==undefined)?costOverride:def.cost;
   const untapped=p.mana.filter(m=>!m.tapped);
   const civs=def.civs||[def.civ];
   const sel=[];
@@ -1488,17 +1827,20 @@ function autoSelectMana(p,def){
     if(m)sel.push(m.uid);
   }
   for(const m of untapped){
-    if(sel.length>=def.cost)break;
+    if(sel.length>=cost)break;
     if(!sel.includes(m.uid))sel.push(m.uid);
   }
-  return sel.slice(0,def.cost);
+  return sel.slice(0,cost);
 }
 function manaPayModalHTML(){
   if(!ui.manaPay)return '';
   const p=getPlayer(ui.myIdx);
-  const handCard=p.hand.find(c=>c.uid===ui.manaPay.cardUid);
+  const handCard=ui.manaPay.fromGrave
+    ? p.graveyard.find(c=>c.uid===ui.manaPay.cardUid)
+    : p.hand.find(c=>c.uid===ui.manaPay.cardUid);
   if(!handCard)return '';
   const def=getCardDef(handCard.defId);
+  const payCost=ui.manaPay.fromGrave?Math.max(1,def.cost-1):effectiveCost(game,ui.myIdx,def);
   const civs=def.civs||[def.civ];
   const civLabel=civs.map(cv=>CIVS[cv].name).join('と');
   const chips=p.mana.map(m=>{
@@ -1507,9 +1849,9 @@ function manaPayModalHTML(){
     const dis=m.tapped;
     return `<div class="mana-pick ${sel?'sel':''} ${dis?'dis':''}" style="--mc:${civ.color}" ${dis?'':`data-action="mana-toggle" data-uid="${esc(m.uid)}"`}><span class="mp-dot"></span><span class="mp-name">${esc(md.name)}</span>${dis?'<span class="mp-tap">タップ済</span>':''}</div>`;
   }).join('');
-  const ok=validManaSelection(p,def,ui.manaSelected);
+  const ok=validManaSelection(p,def,ui.manaSelected,payCost);
   return `<div class="modal-overlay"><div class="modal-box">
-    <div class="modal-title">マナを${def.cost}枚選択 (${ui.manaSelected.length}/${def.cost})</div>
+    <div class="modal-title">${ui.manaPay.fromGrave?'墓地から召喚 — ':''}マナを${payCost}枚選択 (${ui.manaSelected.length}/${payCost})</div>
     <div style="text-align:center;font-size:12px;color:var(--text-muted);">「${esc(def.name)}」 — ${civLabel}のマナを最低1枚ずつ含めてください</div>
     <div class="mana-pick-list">${chips}</div>
     <div class="modal-actions row">
@@ -1518,9 +1860,34 @@ function manaPayModalHTML(){
     </div>
   </div></div>`;
 }
+function stadiumModalHTML(){
+  if(!ui.stadiumView)return '';
+  const p=getPlayer(ui.stadiumView.owner);
+  const s=(p.stadiums||[]).find(x=>x.uid===ui.stadiumView.uid);
+  if(!s)return '';
+  const sd=getCardDef(s.defId);
+  const rows=!s.under.length?'<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:8px;">下にカードはありません</div>'
+    :s.under.map(c=>{const d=getCardDef(c.defId),civ=CIVS[d.civ];return `<div class="gy-row"><span class="gy-dot" style="background:${civ.color}"></span><span style="flex:1;">${esc(d.name)}</span></div>`;}).join('');
+  return `<div class="modal-overlay"><div class="modal-box">
+    <div class="modal-card-preview">${cardHTML(s.defId,{large:true})}</div>
+    <div class="modal-title" style="font-size:13px;">下のカード (${s.under.length}/4)</div>
+    <div class="gy-list">${rows}</div>
+    <div class="modal-actions"><button class="btn btn-ghost btn-block" data-action="close-modal">閉じる</button></div>
+  </div></div>`;
+}
 function graveyardModalHTML(){
   if(ui.graveyardView===null)return '';const p=getPlayer(ui.graveyardView);
-  const rows=!p.graveyard.length?'<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:10px;">墓地は空です</div>':p.graveyard.map(c=>{const def=getCardDef(c.defId),civ=CIVS[def.civ];return `<div class="gy-row"><span class="gy-dot" style="background:${civ.color}"></span><span style="flex:1;">${esc(def.name)}</span><span style="color:var(--text-faint);font-size:11px;">${def.type==='creature'?def.power:'呪文'}</span></div>`;}).join('');
+  const canGrave=ui.graveyardView===ui.myIdx&&isMyDecision()&&!ui.selectedAttackerUid;
+  const rows=!p.graveyard.length?'<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:10px;">墓地は空です</div>':p.graveyard.map(c=>{
+    const def=getCardDef(c.defId),civ=CIVS[def.civ];
+    let gsBtn='';
+    if(canGrave&&def.abilities.includes('graveSummon')){
+      const gc=Math.max(1,def.cost-1);
+      const can=canPay(p,def,gc)&&canPlaceCreature(game,ui.myIdx,def).ok;
+      gsBtn=`<button class="btn btn-primary btn-sm" data-action="open-grave-pay" data-uid="${esc(c.uid)}" ${can?'':'disabled'} style="font-size:10px;padding:3px 8px;">召喚(${gc})</button>`;
+    }
+    return `<div class="gy-row"><span class="gy-dot" style="background:${civ.color}"></span><span style="flex:1;">${esc(def.name)}</span>${gsBtn}<span style="color:var(--text-faint);font-size:11px;">${def.type==='creature'?def.power:def.type==='stadium'?'施設':'呪文'}</span></div>`;
+  }).join('');
   return `<div class="modal-overlay"><div class="modal-box"><div class="modal-title">${esc(p.name)}の墓地 (${p.graveyard.length})</div><div class="gy-list">${rows}</div><div class="modal-actions"><button class="btn btn-ghost btn-block" data-action="close-modal">閉じる</button></div></div></div>`;
 }
 
@@ -1537,6 +1904,7 @@ function startScreenHTML(){
     <div class="role-btns">
       <button class="btn btn-primary" data-action="create-room" style="font-size:15px;padding:14px 28px;">⚔ ルームを作成 (P1)</button>
       <button class="btn btn-ghost"   data-action="show-join"   style="font-size:15px;padding:14px 28px;">🛡 ルームに参加 (P2)</button>
+      <button class="btn btn-ghost"   data-action="show-watch"  style="font-size:14px;padding:11px 28px;">👁 観戦する</button>
     </div>
   </div>`;
 }
@@ -1555,7 +1923,7 @@ function waitingForPeerHTML(){
 }
 function enterCodeHTML(){
   return `<div class="screen-center" style="gap:16px;">
-    <div><div class="logo-title">FIVE CREST</div><div class="logo-sub">ルームに参加</div></div>
+    <div><div class="logo-title">FIVE CREST</div><div class="logo-sub">${joinMode==='spectate'?'観戦する':'ルームに参加'}</div></div>
     <div style="font-size:13px;color:var(--text-muted);">P1から教えてもらったコードを入力:</div>
     <input class="code-inp" id="codeInp" type="text" maxlength="6" placeholder="------" autocomplete="off" spellcheck="false">
     <button class="btn btn-primary" data-action="connect-room" style="font-size:14px;padding:12px 32px;">接続する →</button>
@@ -1601,6 +1969,13 @@ function waitingForReadyHTML(){
     <button class="btn btn-ghost btn-sm" data-action="db-back">← デッキに戻る</button>
   </div>`;
 }
+function spectatorWaitHTML(){
+  return `<div class="screen-center" style="gap:16px;">
+    <div class="logo-sub">観戦モード</div>
+    <div class="waiting-banner" style="max-width:280px;padding:14px 20px;font-size:13px;">ゲームの開始を待っています...<br>両プレイヤーが準備完了すると自動で表示されます。</div>
+    <button class="btn btn-ghost btn-sm" data-action="go-start">← ホームへ</button>
+  </div>`;
+}
 function gameOverScreenHTML(){
   const winner=getPlayer(game.winner),isMyWin=game.winner===ui.myIdx;
   return `<div class="screen-center">
@@ -1608,6 +1983,8 @@ function gameOverScreenHTML(){
     <div class="winner-banner" style="color:${isMyWin?'var(--civ-light)':'var(--text-muted)'}">${esc(winner.name)} の勝利!</div>
     ${ui.role==='host'
       ? `<button class="btn btn-primary" data-action="play-again">もう一度プレイ</button>`
+      : ui.role==='spectator'
+      ? `<div style="font-size:13px;color:var(--text-muted);">👁 観戦モード — P1の再開を待っています</div>`
       : `<div style="font-size:13px;color:var(--text-muted);">P1が再ゲームを開始するまでお待ちください...</div>`}
   </div>`;
 }
@@ -1627,11 +2004,13 @@ function render(){
   else if(ui.screen==='disconnected')    html=disconnectedHTML();
   else if(ui.screen==='deckBuilder')     html=deckBuilderScreenHTML();
   else if(ui.screen==='waitingForReady') html=waitingForReadyHTML();
+  else if(ui.screen==='spectatorWait')   html=spectatorWaitHTML();
   else if(ui.screen==='gameover')        html=gameOverScreenHTML();
   else{
     html=renderBoard();
     html+=pendingModalHTML();
-    if(!game.pending){html+=cardModalHTML();html+=graveyardModalHTML();html+=manaPayModalHTML();}
+    if(!game.pending){html+=cardModalHTML();html+=graveyardModalHTML();html+=manaPayModalHTML();html+=stadiumModalHTML();}
+    html+=attackBannerHTML();
   }
   app.innerHTML=html;
   const feed=document.getElementById('logFeed');
@@ -1664,10 +2043,11 @@ document.getElementById('app').addEventListener('click',e=>{
   switch(action){
     /* ── Navigation ── */
     case 'create-room': createRoom(); break;
-    case 'show-join':   ui.screen='enterCode'; render(); break;
+    case 'show-join':   joinMode='play'; ui.screen='enterCode'; render(); break;
+    case 'show-watch':  joinMode='spectate'; ui.screen='enterCode'; render(); break;
     case 'connect-room': {
       const code=(document.getElementById('codeInp')?.value||'').trim().toUpperCase();
-      if(code.length===6) joinRoom(code);
+      if(code.length===6) joinRoom(code, joinMode==='spectate');
       else alert('6文字のコードを入力してください。');
       break;
     }
@@ -1681,7 +2061,7 @@ document.getElementById('app').addEventListener('click',e=>{
     case 'deck-add':   deckAdd(el.dataset.id); render(); break;
     case 'deck-rem':   deckRemove(el.dataset.id); render(); break;
     case 'db-save': {
-      const n=document.getElementById('deckNameInp')?.value?.trim()||'マイデッキ';
+      const n=(document.getElementById('deckNameInp')?.value?.trim()||'マイデッキ').slice(0,15);
       saveDeck(`[${ui.role==='host'?'P1':'P2'}] ${n}`,[...deckInProgress]);
       alert(`「${n}」を保存しました。`); render(); break;
     }
@@ -1693,11 +2073,11 @@ document.getElementById('app').addEventListener('click',e=>{
       }} break;
     }
     case 'db-ready': {
-      const ne=document.getElementById('nameInp');if(ne)playerName=ne.value.trim()||playerName;
+      const ne=document.getElementById('nameInp');if(ne)playerName=(ne.value.trim()||playerName).slice(0,10);
       if(deckInProgress.length<40)break;
       if(ui.role==='host'){
         hostDeckIds=[...deckInProgress];
-        if(guestDeckIds){game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds,decideFirstIdx());ui.prevShields=null;ui.breakAnim=null;ui.screen='play';broadcastState();render();}
+        if(guestDeckIds){game=createGame(playerName,guestPlayerName,hostDeckIds,guestDeckIds,decideFirstIdx());ui.prevShields=null;ui.breakAnim=null;ui.prevAttackSeq=0;ui.attackAnim=null;ui.screen='play';broadcastState();render();}
         else{ui.screen='waitingForReady';render();}
       } else {
         sendToPeer({type:'DECK_READY',deck:[...deckInProgress],name:playerName});
@@ -1710,8 +2090,9 @@ document.getElementById('app').addEventListener('click',e=>{
     /* ── Game UI ── */
     case 'open-hand-card': ui.modal={kind:'hand',uid};ui.graveyardView=null;render();break;
     case 'view-card':      ui.modal={kind:'view',uid};ui.graveyardView=null;render();break;
-    case 'close-modal':    ui.modal=null;ui.graveyardView=null;render();break;
-    case 'view-graveyard': ui.graveyardView=parseInt(el.dataset.owner,10);ui.modal=null;render();break;
+    case 'close-modal':    ui.modal=null;ui.graveyardView=null;ui.stadiumView=null;render();break;
+    case 'view-graveyard': ui.graveyardView=parseInt(el.dataset.owner,10);ui.modal=null;ui.stadiumView=null;render();break;
+    case 'view-stadium': ui.stadiumView={uid,owner:parseInt(el.dataset.owner,10)};ui.modal=null;ui.graveyardView=null;render();break;
     case 'select-attacker':  ui.selectedAttackerUid=uid;render();break;
     case 'cancel-attack':    ui.selectedAttackerUid=null;render();break;
 
@@ -1720,7 +2101,13 @@ document.getElementById('app').addEventListener('click',e=>{
     case 'open-mana-pay': {
       const p=getPlayer(ui.myIdx);
       const hc=p.hand.find(c=>c.uid===uid);
-      if(hc){const def=getCardDef(hc.defId);ui.manaPay={cardUid:uid};ui.manaSelected=autoSelectMana(p,def);ui.modal=null;}
+      if(hc){const def=getCardDef(hc.defId);const ec=effectiveCost(game,ui.myIdx,def);ui.manaPay={cardUid:uid};ui.manaSelected=autoSelectMana(p,def,ec);ui.modal=null;}
+      render();break;
+    }
+    case 'open-grave-pay': {
+      const p=getPlayer(ui.myIdx);
+      const gc=p.graveyard.find(c=>c.uid===uid);
+      if(gc){const def=getCardDef(gc.defId);const ec=Math.max(1,def.cost-1);ui.manaPay={cardUid:uid,fromGrave:true};ui.manaSelected=autoSelectMana(p,def,ec);ui.modal=null;ui.graveyardView=null;}
       render();break;
     }
     case 'mana-toggle': {
@@ -1732,7 +2119,7 @@ document.getElementById('app').addEventListener('click',e=>{
     case 'mana-pay-confirm': {
       const mp=ui.manaPay;const sel=[...ui.manaSelected];
       ui.manaPay=null;ui.manaSelected=[];
-      if(mp)dispatchAction({kind:'playCard',uid:mp.cardUid,manaUids:sel});
+      if(mp)dispatchAction({kind:mp.fromGrave?'playFromGrave':'playCard',uid:mp.cardUid,manaUids:sel});
       break;
     }
     case 'target-skip':  dispatchAction({kind:'targetSkip'});break;
