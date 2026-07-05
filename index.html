@@ -417,7 +417,7 @@ const ABILITY_INFO = {
   powerBreak:    { label: '剛撃',        kanji: '剛',  desc: 'パワー6000ごとに、ブレイクできるシールドが1枚増える(〜5999:1枚、6000〜:2枚、12000〜:3枚)。' },
   spellBoost:    { label: '詠唱',        kanji: '詠',  desc: '自分が使う呪文のコストを1少なくする(重複する、最低1)。' },
   freezeCast:    { label: '凍結',        kanji: '凍',  desc: '自分が呪文を使った時、相手のクリーチャー1体を選んでもよい。それは次の自分のターンの始めまで攻撃もブロックもできない。' },
-  tideBreak:     { label: '潮撃',        kanji: '潮',  desc: 'デッキに水文明のカードが18枚以上入っているなら、シールドを3枚ブレイクする。' },
+  tideBreak:     { label: '潮撃',        kanji: '潮',  desc: 'デッキに水文明のカードが20枚以上入っているなら、シールドを3枚ブレイクする。' },
   graveSummon:   { label: '墓地召喚',    kanji: '墓',  desc: '墓地からもコストを1下げて召喚できる。' },
   slowField:     { label: '時滞',        kanji: '滞',  desc: 'このクリーチャーがバトルゾーンにある間、相手のクリーチャーは出たターンに攻撃できない。' },
 };
@@ -470,7 +470,7 @@ const RAW_CARDS = [
   {id:'f12', civ:'fire', type:'creature', name:'灼炎の悪鬼', cost:5, power:5000, abilities:["speed", "deathtouch"]},
   {id:'f13', civ:'fire', type:'creature', name:'業火の魔王ベルゼ', cost:7, power:10000, abilities:["speed","powerBreak"]},
   {id:'f14', civ:'fire', type:'spell', name:'爆炎の弾丸', cost:1, abilities:["shieldTrigger"], effect:{"type": "destroyPowerLE", "value": 1000}},
-  {id:'f15', civ:'fire', type:'spell', name:'大噴火', cost:5, effect:{"type": "massDestroyLE", "value": 4000}},
+  {id:'f15', civ:'fire', type:'spell', name:'大噴火', cost:5, abilities:["shieldTrigger"],effect:{"type": "massDestroyLE", "value": 4000}},
   {id:'w1', civ:'water', type:'creature', name:'泡沫のミルル', cost:1, power:1000, abilities:["shieldTrigger"]},
   {id:'w2', civ:'water', type:'creature', name:'潮流の精霊ウンディ', cost:2, power:1000, abilities:[], etb:{"type": "draw", "value": 1}},
   {id:'w3', civ:'water', type:'creature', name:'深海の見張りゴーレム', cost:3, power:2000, abilities:["guard"]},
@@ -487,6 +487,10 @@ const RAW_CARDS = [
   {id:'w14', civ:'water', type:'spell', name:'氷の矢', cost:1, effect:{"type": "tapCreature"}},
   {id:'w15', civ:'water', type:'spell', name:'大海嘯', cost:5, effect:{"type": "massBounce"}},
   {id:'w16', civ:'water', type:'spell', name:'記憶の還流', cost:2, effect:{"type": "graveShuffle"}},
+  {id:'w18', civ:'water', type:'creature', name:'詠唱の魔導士ルーン', cost:3, power:3000, abilities:["spellBoost","freezeCast"]},
+  {id:'w19', civ:'water', type:'creature', name:'蒼波の襲撃者ザッパ', cost:4, power:3000, abilities:["speed","tideBreak"]},
+  {id:'w20', civ:'water', type:'stadium', name:'魔導書院アカシア', cost:2, text:'呪文を使うとき、その呪文をこの下に置くことでカードを1枚引いてよい。自分のターン終了時、下に呪文が4枚あれば、このカードと下のカードを墓地に置き、手札の呪文を1枚コストを支払わずに唱えてよい。'},
+  {id:'w21', civ:'water', type:'spell', name:'大海の創世', cost:15, effect:{"type": "sequence", "steps": [{"type":"draw","value":3},{"type":"reviveSummon","count":3}]}},
   {id:'n1', civ:'nature', type:'creature', name:'双葉のチョコロ', cost:1, power:1000, abilities:["shieldTrigger"]},
   {id:'n2', civ:'nature', type:'creature', name:'つる脚のラプトル', cost:2, power:2000, abilities:["guard"]},
   {id:'n3', civ:'nature', type:'creature', name:'芽吹きの精霊リーフィ', cost:3, power:1000, abilities:["speed"], etb:{"type": "ramp"}},
@@ -533,13 +537,9 @@ const RAW_CARDS = [
   {id:'d13', civ:'dark', type:'creature', name:'屍鬼将ゾンバイン', cost:7, power:8000, abilities:[], etb:{"type": "multiDiscard", "count": 2}},
   {id:'d14', civ:'dark', type:'spell', name:'闇の処刑', cost:3, effect:{"type": "destroyAny"}},
   {id:'d15', civ:'dark', type:'spell', name:'手札破壊', cost:3, effect:{"type": "discardCard"}},
+  {id:'d18', civ:'dark', type:'spell', name:'闇との取引', cost:1, effect:{"type": "sequence", "steps": [{"type":"draw","value":2},{"type":"selfDiscard"}]}},
   {id:'m1', civ:'multi', civs:['water','light'], type:'creature', name:'時の法皇 ミラダンテXII', cost:4, power:12000, abilities:["speed","multiBreak","guard"], etb:{"type": "miradante"}, p1Only:true},
   {id:'m2', civ:'multi', civs:['fire','nature'], type:'creature', name:'ドキラゴン剣', cost:6, power:12000, abilities:["speed","multiBreak"], etb:{"type": "sequence", "steps": [{"type":"draw","value":2},{"type":"freeSummon","budget":4}]}},
-  {id:'w18', civ:'water', type:'creature', name:'詠唱の魔導士ルーン', cost:3, power:3000, abilities:["spellBoost","freezeCast"]},
-  {id:'w19', civ:'water', type:'creature', name:'蒼波の襲撃者ザッパ', cost:4, power:3000, abilities:["speed","tideBreak"]},
-  {id:'w20', civ:'water', type:'stadium', name:'魔導書院アカシア', cost:2, text:'呪文を使うとき、その呪文をこの下に置くことでカードを1枚引いてよい。自分のターン終了時、下に呪文が4枚あれば、このカードと下のカードを墓地に置き、手札の呪文を1枚コストを支払わずに唱えてよい。'},
-  {id:'w21', civ:'water', type:'spell', name:'大海の創世', cost:15, effect:{"type": "sequence", "steps": [{"type":"draw","value":3},{"type":"reviveSummon","count":3}]}},
-  {id:'d18', civ:'dark', type:'spell', name:'闇との取引', cost:1, effect:{"type": "sequence", "steps": [{"type":"draw","value":2},{"type":"selfDiscard"}]}},
   {id:'m3', civ:'multi', civs:['dark','nature'], type:'creature', name:'腐土の巨人ヨルムン', cost:5, power:8000, abilities:["guard","graveSummon","slowField"], etb:{"type": "sequence", "steps": [{"type":"destroyPowerLE","value":2000},{"type":"destroyPowerLE","value":2000}]}},
   {id:'m4', civ:'multi', civs:['fire','light'], type:'creature', name:'閃光の騎士団長レイ', cost:5, power:4000, abilities:["speed"], etb:{"type": "placeLimit"}}
 ];
@@ -1276,7 +1276,7 @@ function resolveCombat(state, attacker, targetType, targetUid, blockerUid) {
   }
   let breakCount = 1;
   if (attackerDef.abilities.includes('powerBreak')) breakCount = Math.floor(effectivePower(attacker) / 6000) + 1;
-  else if (attackerDef.abilities.includes('tideBreak') && state.players[atkIdx].waterCount >= 18) breakCount = 3;
+  else if (attackerDef.abilities.includes('tideBreak') && state.players[atkIdx].waterCount >= 20) breakCount = 3;
   else if (attackerDef.abilities.includes('multiBreak')) breakCount = 2;
   breakShields(state, defIdx, atkIdx, breakCount);
 }
